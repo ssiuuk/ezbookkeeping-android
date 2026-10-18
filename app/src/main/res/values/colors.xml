@@ -1,7 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="md_primary">#8B4F24</color>
+    <color name="md_on_primary">#FFFFFF</color>
+    <color name="md_primary_container">#FFDBC8</color>
+    <color name="md_on_primary_container">#321200</color>
+    <color name="md_secondary">#755846</color>
+    <color name="md_on_secondary">#FFFFFF</color>
+    <color name="md_secondary_container">#FFDCC7</color>
+    <color name="md_on_secondary_container">#2B160A</color>
+    <color name="md_tertiary">#5F6135</color>
+    <color name="md_on_tertiary">#FFFFFF</color>
+    <color name="md_tertiary_container">#E5E6AE</color>
+    <color name="md_on_tertiary_container">#1C1D00</color>
+    <color name="md_error">#BA1A1A</color>
+    <color name="md_on_error">#FFFFFF</color>
+    <color name="md_error_container">#FFDAD6</color>
+    <color name="md_on_error_container">#410002</color>
+    <color name="md_surface">#FFF8F5</color>
+    <color name="md_on_surface">#221A15</color>
+    <color name="md_surface_variant">#F4DED3</color>
+    <color name="md_on_surface_variant">#52443C</color>
+    <color name="md_outline">#85746B</color>
+    <color name="md_outline_variant">#D7C2B8</color>
+    <color name="md_surface_container_lowest">#FFFFFF</color>
+    <color name="md_surface_container_low">#FEF1EA</color>
+    <color name="md_surface_container">#F8EBE4</color>
+    <color name="md_surface_container_high">#F3E5DE</color>
+    <color name="md_surface_container_highest">#EDE0D9</color>
+    <color name="md_inverse_surface">#382E29</color>
+    <color name="md_inverse_on_surface">#FEEDE5</color>
+    <color name="md_inverse_primary">#FFB68B</color>
+    <color name="amount_income">#2E7D32</color>
+    <color name="amount_expense">#C62828</color>
+    <color name="amount_transfer">#52443C</color>
     <color name="primary">#c67e48</color>
-    <color name="background">#f6f6f8</color>
-    <color name="text_primary">#212121</color>
-    <color name="text_secondary">#757575</color>
 </resources>

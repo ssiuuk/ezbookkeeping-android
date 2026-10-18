@@ -1,13 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
+        android:shortcutId="add_transaction"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_add"
+        android:shortcutShortLabel="@string/add_transaction">
+        <intent
+            android:action="com.ssiuuk.ezbookkeeping.ADD_TRANSACTION"
+            android:targetPackage="com.ssiuuk.ezbookkeeping"
+            android:targetClass="com.ssiuuk.ezbookkeeping.LaunchActivity" />
+    </shortcut>
+    <shortcut
         android:shortcutId="change_server"
         android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_shortcut_server"
         android:shortcutShortLabel="@string/change_server">
         <intent
             android:action="com.ssiuuk.ezbookkeeping.CHANGE_SERVER"
             android:targetPackage="com.ssiuuk.ezbookkeeping"
-            android:targetClass="com.ssiuuk.ezbookkeeping.MainActivity" />
+            android:targetClass="com.ssiuuk.ezbookkeeping.LaunchActivity" />
     </shortcut>
 </shortcuts>

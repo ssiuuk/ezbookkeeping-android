@@ -1,12 +1,162 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ezBookkeeping</string>
-    <string name="setup_title">Connect to your server</string>
-    <string name="setup_description">Enter the address you open ezBookkeeping at in your browser, for example https://money.example.com or http://192.168.1.10:8080</string>
+
+    <!-- servers -->
+    <string name="servers">Servers</string>
+    <string name="welcome_title">Welcome to ezBookkeeping</string>
+    <string name="welcome_description">Connect to your ezBookkeeping server to get started. You can add more servers later in Settings.</string>
+    <string name="add_server">Add server</string>
+    <string name="server_name">Name (optional)</string>
+    <string name="server_name_helper">For example Home or Family</string>
     <string name="server_address_hint">Server address</string>
+    <string name="server_address_helper">For example https://money.example.com or http://192.168.1.10:8080</string>
     <string name="connect">Connect</string>
+    <string name="checking_server">Checking the server…</string>
     <string name="invalid_server_address">Please enter a valid server address</string>
     <string name="change_server">Change server</string>
-    <string name="load_failed_title">Unable to reach the server</string>
+    <string name="server_signed_in_as">Signed in as %1$s</string>
+    <string name="server_not_signed_in">Not signed in</string>
+    <string name="server_in_use">In use</string>
+    <string name="rename">Rename</string>
+    <string name="remove">Remove</string>
+    <string name="remove_server_title">Remove this server?</string>
+    <string name="remove_server_message">The app forgets %1$s and signs out of it. Your data stays on the server.</string>
+    <string name="switch_to">Switch</string>
+
+    <!-- sign in -->
+    <string name="sign_in">Sign in</string>
+    <string name="sign_in_to">Sign in to %1$s</string>
+    <string name="username_or_email">Username or email</string>
+    <string name="password">Password</string>
+    <string name="two_factor_title">Two-factor authentication</string>
+    <string name="two_factor_description">Enter the 6-digit code from your authenticator app.</string>
+    <string name="passcode">Passcode</string>
+    <string name="verify">Verify</string>
+    <string name="sign_in_with_web">Sign in on the web page</string>
+    <string name="sign_in_with_web_description">Use this for single sign-on or to create an account.</string>
+    <string name="sign_in_needed">Your sign-in expired. Please sign in again.</string>
+    <string name="sign_out">Sign out</string>
+    <string name="sign_out_confirm">Sign out of %1$s?</string>
+
+    <!-- navigation -->
+    <string name="overview">Overview</string>
+    <string name="transactions">Transactions</string>
+    <string name="accounts">Accounts</string>
+    <string name="more">More</string>
+    <string name="settings">Settings</string>
+
+    <!-- overview -->
+    <string name="this_month">This month</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
+    <string name="this_week">This week</string>
+    <string name="this_year">This year</string>
+    <string name="last_month">Last month</string>
+    <string name="income">Income</string>
+    <string name="expense">Expense</string>
+    <string name="transfer">Transfer</string>
+    <string name="balance_change">Balance change</string>
+    <string name="net_assets">Net assets</string>
+    <string name="total_assets">Assets</string>
+    <string name="total_liabilities">Liabilities</string>
+    <string name="recent_transactions">Recent transactions</string>
+    <string name="see_all">See all</string>
+    <string name="no_transactions">No transactions yet</string>
+    <string name="no_transactions_hint">Tap Add to record your first one.</string>
+    <string name="no_accounts">No accounts yet</string>
+    <string name="no_accounts_hint">Create an account first so transactions have somewhere to go.</string>
+    <string name="add_account">Add account</string>
+    <string name="other_currencies">Also %1$s</string>
+
+    <!-- transactions -->
+    <string name="add">Add</string>
+    <string name="add_transaction">Add transaction</string>
+    <string name="edit_transaction">Edit transaction</string>
+    <string name="amount">Amount</string>
+    <string name="category">Category</string>
+    <string name="account">Account</string>
+    <string name="from_account">From account</string>
+    <string name="to_account">To account</string>
+    <string name="received_amount">Received amount</string>
+    <string name="date">Date</string>
+    <string name="time">Time</string>
+    <string name="tags">Tags</string>
+    <string name="no_tags">No tags</string>
+    <string name="description">Description</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
     <string name="retry">Retry</string>
+    <string name="saved">Saved</string>
+    <string name="deleted">Deleted</string>
+    <string name="delete_transaction_title">Delete this transaction?</string>
+    <string name="delete_transaction_message">This can\'t be undone.</string>
+    <string name="choose_category">Choose a category</string>
+    <string name="choose_account">Choose an account</string>
+    <string name="choose_tags">Choose tags</string>
+    <string name="amount_required">Enter an amount</string>
+    <string name="category_required">Choose a category</string>
+    <string name="account_required">Choose an account</string>
+    <string name="destination_account_required">Choose the account to transfer to</string>
+    <string name="same_account">Choose two different accounts</string>
+    <string name="no_categories">No categories of this type yet. Add them in More → Categories.</string>
+    <string name="read_only_transaction">This transaction can\'t be edited here.</string>
+    <string name="search">Search</string>
+    <string name="search_hint">Search descriptions</string>
+    <string name="transfer_to">%1$s → %2$s</string>
+    <string name="hidden_amount">•••</string>
+
+    <!-- books -->
+    <string name="books">Books</string>
+    <string name="my_book">My book</string>
+    <string name="choose_book">Choose a book</string>
+    <string name="book_owner">Shared by %1$s</string>
+
+    <!-- more -->
+    <string name="reports">Reports</string>
+    <string name="budgets">Budgets</string>
+    <string name="household_report">Household report</string>
+    <string name="projects">Projects</string>
+    <string name="categories">Categories</string>
+    <string name="tag_list">Tags</string>
+    <string name="scheduled_transactions">Scheduled transactions</string>
+    <string name="templates">Templates</string>
+    <string name="family_books">Family books</string>
+    <string name="exchange_rates">Exchange rates</string>
+    <string name="web_settings">Server settings and preferences</string>
+    <string name="section_insights">Insights</string>
+    <string name="section_organize">Organize</string>
+    <string name="section_app">App</string>
+    <string name="open_web_version">Open the full web version</string>
+
+    <!-- settings -->
+    <string name="theme">Theme</string>
+    <string name="theme_system">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="signed_in_account">Account</string>
+    <string name="about">About</string>
+    <string name="version">Version %1$s</string>
+    <string name="current_server">Current server</string>
+    <string name="manage_servers">Manage servers</string>
+
+    <!-- errors -->
+    <string name="load_failed_title">Unable to reach the server</string>
+    <string name="something_went_wrong">Something went wrong</string>
+    <string name="not_ezbookkeeping_server">This address doesn\'t look like an ezBookkeeping server</string>
+    <string name="internal_auth_disabled">This server only allows single sign-on. Use \"Sign in on the web page\".</string>
+    <!-- account categories -->
+    <string name="account_category_cash">Cash</string>
+    <string name="account_category_checking">Checking accounts</string>
+    <string name="account_category_savings">Savings accounts</string>
+    <string name="account_category_credit_card">Credit cards</string>
+    <string name="account_category_virtual">Virtual accounts</string>
+    <string name="account_category_debt">Debts</string>
+    <string name="account_category_receivables">Receivables</string>
+    <string name="account_category_investment">Investments</string>
+    <string name="account_category_deposit">Certificates of deposit</string>
+    <string name="account_category_other">Other accounts</string>
+    <string name="sub_accounts">%1$d sub-accounts</string>
 </resources>

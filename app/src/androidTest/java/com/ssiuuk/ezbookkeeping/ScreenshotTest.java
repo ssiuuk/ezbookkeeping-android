@@ -1,0 +1,155 @@
+package com.ssiuuk.ezbookkeeping;
+
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.uiautomator.By;
+import androidx.test.uiautomator.BySelector;
+import androidx.test.uiautomator.UiDevice;
+import androidx.test.uiautomator.UiObject2;
+import androidx.test.uiautomator.Until;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import java.io.File;
+import java.io.IOException;
+
+/**
+ * Walks through the main screens against a seeded test server and saves a screenshot of each,
+ * so changes to the app can be reviewed without a phone. CI pulls the pictures from the emulator.
+ */
+@RunWith(AndroidJUnit4.class)
+public class ScreenshotTest {
+    private static final String SCREENS = "/sdcard/Download/ezb-screens";
+    private static final long TIMEOUT = 20000;
+
+    private UiDevice device;
+    private String packageName;
+
+    @Test
+    public void tourOfTheApp() throws Exception {
+        Bundle arguments = InstrumentationRegistry.getArguments();
+        String serverUrl = arguments.getString("serverUrl", "http://10.0.2.2:8080");
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        packageName = context.getPackageName();
+        device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        device.executeShellCommand("mkdir -p " + SCREENS);
+
+        try {
+            Intent intent = context.getPackageManager().getLaunchIntentForPackage(packageName);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            context.startActivity(intent);
+
+            find(By.res(packageName, "server_address"));
+            shot("01-welcome");
+            find(By.res(packageName, "server_address")).setText(serverUrl);
+            find(By.res(packageName, "server_name")).setText("Home");
+            device.pressBack();
+            find(By.res(packageName, "connect_button")).click();
+
+            find(By.res(packageName, "login_name"));
+            shot("02-sign-in");
+            find(By.res(packageName, "login_name")).setText("demo");
+            find(By.res(packageName, "password")).setText("demo123456");
+            device.pressBack();
+            find(By.res(packageName, "sign_in_button")).click();
+
+            find(By.res(packageName, "bottom_nav"));
+            find(By.textContains("Weekly shop"));
+            settle();
+            shot("03-overview");
+
+            find(By.res(packageName, "nav_transactions")).click();
+            find(By.textContains("Dinner with friends"));
+            settle();
+            shot("04-transactions");
+
+            find(By.res(packageName, "nav_accounts")).click();
+            find(By.text("Savings"));
+            settle();
+            shot("05-accounts");
+
+            find(By.res(packageName, "nav_more")).click();
+            find(By.text("Reports"));
+            shot("06-more");
+
+            find(By.res(packageName, "nav_overview")).click();
+            find(By.res(packageName, "fab")).click();
+            find(By.res(packageName, "amount"));
+            device.pressBack();
+            settle();
+            shot("07-add-transaction");
+
+            find(By.res(packageName, "amount")).setText("12.50");
+            device.pressBack();
+            find(By.res(packageName, "category")).click();
+            find(By.text("Restaurants"));
+            settle();
+            shot("08-choose-category");
+            find(By.text("Restaurants")).click();
+            find(By.res(packageName, "comment")).setText("Lunch");
+            device.pressBack();
+            settle();
+            shot("09-filled-transaction");
+            find(By.res(packageName, "save_button")).click();
+
+            find(By.textContains("Lunch"));
+            settle();
+            shot("10-overview-after-adding");
+
+            find(By.textContains("Lunch")).click();
+            find(By.res(packageName, "save_button"));
+            settle();
+            shot("11-edit-transaction");
+            device.pressBack();
+
+            find(By.res(packageName, "action_settings")).click();
+            find(By.text("Theme"));
+            shot("12-settings");
+            device.pressBack();
+
+            find(By.res(packageName, "nav_more")).click();
+            find(By.text("Reports")).click();
+            device.wait(Until.hasObject(By.pkg(packageName).clazz("android.webkit.WebView")), TIMEOUT);
+            Thread.sleep(8000);
+            shot("13-web-reports");
+            device.pressBack();
+
+            find(By.res(packageName, "nav_overview")).click();
+            device.executeShellCommand("cmd uimode night yes");
+            Thread.sleep(3000);
+            find(By.textContains("Weekly shop"));
+            settle();
+            shot("14-overview-dark");
+            device.executeShellCommand("cmd uimode night no");
+        } catch (Throwable error) {
+            shot("99-failure");
+            device.dumpWindowHierarchy(new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalCacheDir(), "hierarchy.xml"));
+            device.executeShellCommand("cp " + new File(context.getExternalCacheDir(), "hierarchy.xml").getAbsolutePath() + " " + SCREENS + "/99-hierarchy.xml");
+            throw error;
+        }
+    }
+
+    private UiObject2 find(BySelector selector) {
+        UiObject2 object = device.wait(Until.findObject(selector), TIMEOUT);
+
+        if (object == null) {
+            throw new AssertionError("Not found on screen: " + selector);
+        }
+
+        return object;
+    }
+
+    private void settle() throws InterruptedException {
+        device.waitForIdle();
+        Thread.sleep(1500);
+    }
+
+    private void shot(String name) throws IOException {
+        device.executeShellCommand("screencap -p " + SCREENS + "/" + name + ".png");
+    }
+}
