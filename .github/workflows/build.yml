@@ -1,0 +1,244 @@
+name: Build Android App
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      server_ref:
+        description: 'Branch, tag or commit of ssiuuk/ezbookkeeping to test against (default: the one in SERVER_REF)'
+        required: false
+  # the server repository sends this when its main branch changes
+  repository_dispatch:
+    types:
+      - server-updated
+  # and every night, in case a server change was not announced
+  schedule:
+    - cron: '17 3 * * *'
+
+permissions:
+  contents: write
+  issues: write
+
+env:
+  SERVER_REPO: ssiuuk/ezbookkeeping
+
+jobs:
+  build:
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Prepare signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set, the app is signed with a temporary key and each new build has to be installed fresh"
+          fi
+
+      - name: Build
+        env:
+          APP_VERSION_CODE: ${{ github.run_number }}
+          APP_VERSION_NAME: 1.1.${{ github.run_number }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/ezbookkeeping-android.apk"
+
+      - name: Upload app
+        uses: actions/upload-artifact@v7
+        with:
+          name: ezbookkeeping-android
+          path: ${{ runner.temp }}/ezbookkeeping-android.apk
+
+      - name: Publish to the android-latest release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ! gh release view android-latest > /dev/null 2>&1; then
+            gh release create android-latest --prerelease --target "$GITHUB_SHA" \
+              --title "Android app (latest build)" \
+              --notes "Open this page on your Android phone and download ezbookkeeping-android.apk to install or update the app."
+          fi
+          gh release upload android-latest "$RUNNER_TEMP/ezbookkeeping-android.apk" --clobber
+
+      - name: Publish to the android-preview release
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ! gh release view android-preview > /dev/null 2>&1; then
+            gh release create android-preview --prerelease --target "${{ github.event.pull_request.head.sha }}" \
+              --title "Android app (preview of an open pull request)" \
+              --notes "A test build from a pull request that isn't merged yet. Install it to try the changes; the latest build of main is under \"Android app (latest build)\"."
+          fi
+          cp "$RUNNER_TEMP/ezbookkeeping-android.apk" "$RUNNER_TEMP/ezbookkeeping-android-preview.apk"
+          gh release upload android-preview "$RUNNER_TEMP/ezbookkeeping-android-preview.apk" --clobber
+
+  screenshots:
+    # runs the app on an emulator against the ezBookkeeping server from SERVER_REPO and saves a screenshot of each screen
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Choose the server version
+        id: server
+        env:
+          INPUT_REF: ${{ github.event.inputs.server_ref }}
+          DISPATCH_REF: ${{ github.event.client_payload.sha }}
+        run: |
+          ref="${INPUT_REF:-$DISPATCH_REF}"
+          if [ -z "$ref" ]; then
+            # SERVER_REF names the server branch or commit this app version is meant for
+            ref="$(tr -d '[:space:]' < SERVER_REF)"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Testing against $SERVER_REPO at $ref" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout the server
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ env.SERVER_REPO }}
+          ref: ${{ steps.server.outputs.ref }}
+          path: server
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Build and start the test server
+        # the fork's own server, so books, projects, merchants and pictures can be tested
+        working-directory: server
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          EBK_USER_ENABLE_REGISTER: 'true'
+        run: |
+          npm ci
+          npm run build
+          mkdir -p "$RUNNER_TEMP/server"
+          CGO_ENABLED=1 go build -o "$RUNNER_TEMP/server/ezbookkeeping" ezbookkeeping.go
+          cd "$RUNNER_TEMP/server"
+          mkdir -p conf data log storage
+          cp "$GITHUB_WORKSPACE/server/conf/ezbookkeeping.ini" conf/
+          ln -s "$GITHUB_WORKSPACE/server/dist" public
+          ./ezbookkeeping database update
+          nohup ./ezbookkeeping server run > server.log 2>&1 &
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Seed the test server
+        run: bash scripts/seed-test-server.sh http://localhost:8080
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build test apps
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug assembleDebugAndroidTest
+
+      - name: Run on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w -e serverUrl http://10.0.2.2:8080 com.ssiuuk.ezbookkeeping.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/instrument.txt"
+            adb pull /sdcard/Download/ezb-screens "$RUNNER_TEMP/screens" || true
+            adb logcat -d -t 3000 > "$RUNNER_TEMP/screens/logcat.txt" || true
+
+      - name: Show the test server log
+        if: always()
+        run: tail -n 200 "$RUNNER_TEMP/server/server.log" || true
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ezbookkeeping-android-screenshots
+          path: ${{ runner.temp }}/screens
+
+      - name: Publish screenshots to the android-preview release
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ! gh release view android-preview > /dev/null 2>&1; then
+            gh release create android-preview --prerelease --target "${{ github.event.pull_request.head.sha }}" \
+              --title "Android app (preview of an open pull request)" \
+              --notes "A test build from a pull request that isn't merged yet. Install it to try the changes; the latest build of main is under \"Android app (latest build)\"."
+          fi
+          cd "$RUNNER_TEMP/screens"
+          cp "$RUNNER_TEMP/instrument.txt" . || true
+          zip -q "$RUNNER_TEMP/screenshots.zip" ./*
+          gh release upload android-preview "$RUNNER_TEMP/screenshots.zip" --clobber
+
+      - name: Check the walkthrough passed
+        run: |
+          cat "$RUNNER_TEMP/instrument.txt"
+          grep -q "^OK (" "$RUNNER_TEMP/instrument.txt"
+
+      - name: Report a server change that breaks the app
+        # runs started by the server repository or the nightly check have no pull request to show the failure on
+        if: failure() && (github.event_name == 'repository_dispatch' || github.event_name == 'schedule')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SERVER_REF: ${{ steps.server.outputs.ref }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="The app test fails against the latest server"
+          body="The emulator walkthrough failed against $SERVER_REPO at \`$SERVER_REF\`: $RUN_URL"
+          number="$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number')"
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
