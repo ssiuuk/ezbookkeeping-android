@@ -27,7 +27,8 @@ public abstract class BaseActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         if (titleRes != 0) {
-            toolbar.setTitle(titleRes);
+            // set on the activity, which would otherwise put its label back on the toolbar after onCreate
+            setTitle(titleRes);
         }
 
         if (showBack && getSupportActionBar() != null) {

@@ -160,7 +160,8 @@ public class WebActivity extends BaseActivity {
         webView.setVisibility(View.VISIBLE);
         targetReached = false;
         String loader = signInMode ? WebSession.signedOutLoader(targetUrl) : WebSession.signedInLoader(server, targetUrl);
-        webView.loadDataWithBaseURL(server.url + "/mobile", loader, "text/html", "UTF-8", null);
+        // the loader must not sit at /mobile itself, or replacing it with /mobile#!... would only change the hash
+        webView.loadDataWithBaseURL(server.url + "/app-loader", loader, "text/html", "UTF-8", null);
     }
 
     private void setupWebView() {
@@ -257,7 +258,7 @@ public class WebActivity extends BaseActivity {
     }
 
     private void onRouteChanged(String url) {
-        if (url == null || !url.startsWith(server.url)) {
+        if (url == null || !url.startsWith(server.url + "/mobile")) {
             return;
         }
 

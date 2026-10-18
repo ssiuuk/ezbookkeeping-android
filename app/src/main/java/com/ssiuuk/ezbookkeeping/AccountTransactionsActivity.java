@@ -13,7 +13,8 @@ public class AccountTransactionsActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_fragment);
-        setupToolbar(0, true).setTitle(getIntent().getStringExtra(EXTRA_ACCOUNT_NAME));
+        setupToolbar(0, true);
+        setTitle(getIntent().getStringExtra(EXTRA_ACCOUNT_NAME));
 
         String accountIds = getIntent().getStringExtra(EXTRA_ACCOUNT_ID);
 

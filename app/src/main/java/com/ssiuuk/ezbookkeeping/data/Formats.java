@@ -30,7 +30,9 @@ public final class Formats {
 
         format.setMinimumFractionDigits(2);
         format.setMaximumFractionDigits(2);
-        return format.format(BigDecimal.valueOf(cents).movePointLeft(2));
+        // a real minus sign, matching signedAmount, instead of the locale's hyphen
+        String text = format.format(BigDecimal.valueOf(Math.abs(cents)).movePointLeft(2));
+        return cents < 0 ? "−" + text : text;
     }
 
     public static String signedAmount(long cents, String currencyCode, boolean negative) {

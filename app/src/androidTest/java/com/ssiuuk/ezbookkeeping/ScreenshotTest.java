@@ -115,17 +115,30 @@ public class ScreenshotTest {
             find(By.res(packageName, "nav_more")).click();
             find(By.text("Reports")).click();
             device.wait(Until.hasObject(By.pkg(packageName).clazz("android.webkit.WebView")), TIMEOUT);
-            Thread.sleep(8000);
+            // the web app is a large bundle, so give it time to start and draw the report
+            device.wait(Until.hasObject(By.pkg(packageName).textContains("Expense")), TIMEOUT);
+            Thread.sleep(3000);
             shot("13-web-reports");
+
+            for (int i = 0; i < 3 && !device.hasObject(By.res(packageName, "bottom_nav")); i++) {
+                device.pressBack();
+                device.waitForIdle();
+                Thread.sleep(1000);
+            }
+
+            // switch to dark through the app's own setting; changing the system night mode restarts Play services on the emulator
+            find(By.res(packageName, "action_settings")).click();
+            find(By.text("Theme")).click();
+            find(By.text("Dark")).click();
+            find(By.text("Theme"));
+            settle();
+            shot("14-settings-dark");
             device.pressBack();
 
             find(By.res(packageName, "nav_overview")).click();
-            device.executeShellCommand("cmd uimode night yes");
-            Thread.sleep(3000);
             find(By.textContains("Weekly shop"));
             settle();
-            shot("14-overview-dark");
-            device.executeShellCommand("cmd uimode night no");
+            shot("15-overview-dark");
         } catch (Throwable error) {
             shot("99-failure");
             device.dumpWindowHierarchy(new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalCacheDir(), "hierarchy.xml"));

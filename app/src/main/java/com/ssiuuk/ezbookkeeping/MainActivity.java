@@ -201,7 +201,7 @@ public class MainActivity extends BaseActivity {
             ((Reloadable) fragment).reloadIfStale();
         }
 
-        toolbar.setTitle(titleOf(tabId));
+        setTitle(titleOf(tabId));
         updateSubtitle();
 
         if (tabId == R.id.nav_overview || tabId == R.id.nav_transactions) {
