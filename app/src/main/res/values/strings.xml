@@ -159,4 +159,26 @@
     <string name="account_category_deposit">Certificates of deposit</string>
     <string name="account_category_other">Other accounts</string>
     <string name="sub_accounts">%1$d sub-accounts</string>
+    <string name="book">Book</string>
+    <string name="project">Project</string>
+    <string name="no_project">No project</string>
+    <string name="choose_project">Choose a project</string>
+    <string name="merchant">Merchant</string>
+    <string name="no_merchant">No merchant</string>
+    <string name="choose_merchant">Choose a merchant</string>
+    <string name="add_merchant">Add a merchant</string>
+    <string name="new_merchant">New merchant</string>
+    <string name="merchant_name">Merchant name</string>
+    <string name="merchants_tag_group">Merchants</string>
+    <string name="photos">Photos</string>
+    <string name="take_photo">Take photo</string>
+    <string name="choose_photo">Choose photo</string>
+    <string name="remove_photo_title">Remove this photo?</string>
+    <string name="photo_upload_failed">Couldn\'t upload the photo: %1$s</string>
+    <string name="photo_still_uploading">Wait for the photos to finish uploading</string>
+    <string name="photo_unreadable">Couldn\'t read that photo</string>
+    <string name="photo_description">Photo attached to this transaction</string>
+    <string name="book_change_title">Move to another book?</string>
+    <string name="book_change_message">Category, accounts, tags, project and photos belong to each book, so they will be cleared.</string>
+    <string name="change">Change</string>
 </resources>

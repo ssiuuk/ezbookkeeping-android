@@ -208,7 +208,17 @@ public final class Models {
     public static final class Tag {
         public String id;
         public String name;
+        public String groupId;
         public boolean hidden;
+
+        public static Tag parse(JSONObject json) {
+            Tag tag = new Tag();
+            tag.id = json.optString("id");
+            tag.name = json.optString("name");
+            tag.groupId = json.optString("groupId", "0");
+            tag.hidden = json.optBoolean("hidden");
+            return tag;
+        }
 
         public static List<Tag> parseList(Object result) {
             List<Tag> list = new ArrayList<>();
@@ -218,15 +228,78 @@ public final class Models {
                 JSONObject json = array.optJSONObject(i);
 
                 if (json != null) {
-                    Tag tag = new Tag();
-                    tag.id = json.optString("id");
-                    tag.name = json.optString("name");
-                    tag.hidden = json.optBoolean("hidden");
-                    list.add(tag);
+                    list.add(parse(json));
                 }
             }
 
             return list;
+        }
+    }
+
+    /** A named group of tags, such as the "Merchants" group the app uses for merchants. */
+    public static final class TagGroup {
+        public String id;
+        public String name;
+
+        public static TagGroup parse(JSONObject json) {
+            TagGroup group = new TagGroup();
+            group.id = json.optString("id");
+            group.name = json.optString("name");
+            return group;
+        }
+
+        public static List<TagGroup> parseList(Object result) {
+            List<TagGroup> list = new ArrayList<>();
+            JSONArray array = result instanceof JSONArray ? (JSONArray) result : new JSONArray();
+
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject json = array.optJSONObject(i);
+
+                if (json != null) {
+                    list.add(parse(json));
+                }
+            }
+
+            return list;
+        }
+    }
+
+    public static final class Project {
+        public String id;
+        public String name;
+        public boolean hidden;
+
+        public static List<Project> parseList(Object result) {
+            List<Project> list = new ArrayList<>();
+            JSONArray array = result instanceof JSONArray ? (JSONArray) result : new JSONArray();
+
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject json = array.optJSONObject(i);
+
+                if (json != null) {
+                    Project project = new Project();
+                    project.id = json.optString("id");
+                    project.name = json.optString("name");
+                    project.hidden = json.optBoolean("hidden");
+                    list.add(project);
+                }
+            }
+
+            return list;
+        }
+    }
+
+    /** A picture uploaded for a transaction. */
+    public static final class Picture {
+        public String id;
+        public String url;
+
+        public static Picture parse(Object result) {
+            JSONObject json = result instanceof JSONObject ? (JSONObject) result : new JSONObject();
+            Picture picture = new Picture();
+            picture.id = json.optString("pictureId");
+            picture.url = json.optString("originalUrl");
+            return picture;
         }
     }
 
@@ -283,6 +356,7 @@ public final class Models {
         public boolean editable;
         public JSONObject geoLocation;
         public final List<String> pictureIds = new ArrayList<>();
+        public final List<String> pictureUrls = new ArrayList<>();
         public String projectId;
 
         public static Transaction parse(JSONObject json) {
@@ -352,6 +426,7 @@ public final class Models {
 
                     if (picture != null) {
                         transaction.pictureIds.add(picture.optString("pictureId"));
+                        transaction.pictureUrls.add(picture.optString("originalUrl"));
                     }
                 }
             }

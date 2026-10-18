@@ -27,6 +27,8 @@ final class ChoiceSheet {
         final String color;
         final boolean header;
         boolean selected;
+        /** Shown in the circle instead of the title's first letter, such as + for an add action. */
+        String symbol;
 
         private Choice(String id, String title, String value, String color, boolean header) {
             this.id = id;
@@ -38,6 +40,12 @@ final class ChoiceSheet {
 
         static Choice item(String id, String title, String value, String color) {
             return new Choice(id, title, value, color, false);
+        }
+
+        static Choice symbol(String id, String title, String symbol) {
+            Choice choice = new Choice(id, title, null, null, false);
+            choice.symbol = symbol;
+            return choice;
         }
 
         static Choice header(String title) {
@@ -78,7 +86,7 @@ final class ChoiceSheet {
             }
 
             View row = inflater.inflate(R.layout.item_choice, list, false);
-            Ui.bindAvatar(row.findViewById(R.id.avatar), choice.title, choice.color);
+            Ui.bindAvatar(row.findViewById(R.id.avatar), choice.symbol != null ? choice.symbol : choice.title, choice.color);
             ((TextView) row.findViewById(R.id.title)).setText(choice.title);
             ((TextView) row.findViewById(R.id.value)).setText(choice.value == null ? "" : choice.value);
             row.findViewById(R.id.check).setVisibility(choice.selected ? View.VISIBLE : View.GONE);

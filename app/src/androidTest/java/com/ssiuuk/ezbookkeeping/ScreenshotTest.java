@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.BySelector;
+import androidx.test.uiautomator.Direction;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.Until;
@@ -91,25 +92,49 @@ public class ScreenshotTest {
             settle();
             shot("08-choose-category");
             find(By.text("Restaurants")).click();
-            find(By.res(packageName, "comment")).setText("Lunch");
+
+            find(By.res(packageName, "account")).click();
+            find(By.text("Credit cards"));
+            settle();
+            shot("09-choose-account");
+            find(By.text("Credit card")).click();
+
+            scrollTo(By.res(packageName, "merchant")).click();
+            find(By.text("Add a merchant")).click();
+            find(By.clazz("android.widget.EditText").focused(true)).setText("Corner Café");
+            find(By.text("Add")).click();
+            find(By.res(packageName, "merchant").text("Corner Café"));
+
+            scrollTo(By.res(packageName, "comment")).setText("Lunch");
             hideKeyboard();
             settle();
-            shot("09-filled-transaction");
-            find(By.res(packageName, "save_button")).click();
+            shot("10-filled-transaction");
+            scrollTo(By.res(packageName, "save_button")).click();
 
             find(By.textContains("Lunch"));
             settle();
-            shot("10-overview-after-adding");
+            shot("11-overview-after-adding");
 
             find(By.textContains("Lunch")).click();
-            find(By.res(packageName, "save_button"));
+            find(By.res(packageName, "merchant").text("Corner Café"));
             settle();
-            shot("11-edit-transaction");
+            shot("12-edit-transaction");
+            device.pressBack();
+
+            // a new expense in the same category starts with the account used last time
+            find(By.res(packageName, "fab")).click();
+            find(By.res(packageName, "amount"));
+            hideKeyboard();
+            find(By.res(packageName, "category")).click();
+            find(By.text("Restaurants")).click();
+            find(By.res(packageName, "account").text("Credit card"));
+            settle();
+            shot("13-remembered-account");
             device.pressBack();
 
             find(By.res(packageName, "action_settings")).click();
             find(By.text("Theme"));
-            shot("12-settings");
+            shot("14-settings");
             device.pressBack();
 
             find(By.res(packageName, "nav_more")).click();
@@ -118,7 +143,7 @@ public class ScreenshotTest {
             // the web app is a large bundle, so give it time to start and draw the report
             device.wait(Until.hasObject(By.pkg(packageName).textContains("Expense")), TIMEOUT);
             Thread.sleep(3000);
-            shot("13-web-reports");
+            shot("15-web-reports");
 
             for (int i = 0; i < 3 && !device.hasObject(By.res(packageName, "bottom_nav")); i++) {
                 device.pressBack();
@@ -132,19 +157,37 @@ public class ScreenshotTest {
             find(By.text("Dark")).click();
             find(By.text("Theme"));
             settle();
-            shot("14-settings-dark");
+            shot("16-settings-dark");
             device.pressBack();
 
             find(By.res(packageName, "nav_overview")).click();
             find(By.textContains("Weekly shop"));
             settle();
-            shot("15-overview-dark");
+            shot("17-overview-dark");
         } catch (Throwable error) {
             shot("99-failure");
             device.dumpWindowHierarchy(new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalCacheDir(), "hierarchy.xml"));
             device.executeShellCommand("cp " + new File(context.getExternalCacheDir(), "hierarchy.xml").getAbsolutePath() + " " + SCREENS + "/99-hierarchy.xml");
             throw error;
         }
+    }
+
+    /** Scrolls the form until the field is on screen, since the add screen is taller than the phone. */
+    private UiObject2 scrollTo(BySelector selector) {
+        UiObject2 scroll = find(By.res(packageName, "scroll"));
+        UiObject2 found = device.findObject(selector);
+
+        for (int i = 0; i < 6 && (found == null || found.getVisibleBounds().height() < 20); i++) {
+            scroll.scroll(Direction.DOWN, 0.6f);
+            device.waitForIdle();
+            found = device.findObject(selector);
+        }
+
+        if (found == null) {
+            throw new AssertionError("Not found on screen: " + selector);
+        }
+
+        return found;
     }
 
     private UiObject2 find(BySelector selector) {

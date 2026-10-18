@@ -29,7 +29,6 @@ import java.util.List;
 
 /** Accounts grouped by kind, with their balances. Tapping one shows its transactions. */
 public class AccountsFragment extends Fragment implements Reloadable {
-    private static final int[] CATEGORY_ORDER = { 1, 2, 8, 3, 4, 5, 6, 7, 9 };
 
     private final List<Object> rows = new ArrayList<>();
     private RecyclerView.Adapter<RecyclerView.ViewHolder> adapter;
@@ -108,7 +107,7 @@ public class AccountsFragment extends Fragment implements Reloadable {
         rows.clear();
         List<Integer> categories = new ArrayList<>();
 
-        for (int category : CATEGORY_ORDER) {
+        for (int category : Ui.ACCOUNT_CATEGORY_ORDER) {
             categories.add(category);
         }
 
@@ -131,37 +130,12 @@ public class AccountsFragment extends Fragment implements Reloadable {
                 continue;
             }
 
-            rows.add(categoryName(category));
+            rows.add(Ui.accountCategoryName(requireContext(), category));
             rows.addAll(group);
         }
 
         adapter.notifyDataSetChanged();
         emptyView.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
-    }
-
-    private String categoryName(int category) {
-        switch (category) {
-            case 1:
-                return getString(R.string.account_category_cash);
-            case 2:
-                return getString(R.string.account_category_checking);
-            case 3:
-                return getString(R.string.account_category_credit_card);
-            case 4:
-                return getString(R.string.account_category_virtual);
-            case 5:
-                return getString(R.string.account_category_debt);
-            case 6:
-                return getString(R.string.account_category_receivables);
-            case 7:
-                return getString(R.string.account_category_investment);
-            case 8:
-                return getString(R.string.account_category_savings);
-            case 9:
-                return getString(R.string.account_category_deposit);
-            default:
-                return getString(R.string.account_category_other);
-        }
     }
 
     private class AccountAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {

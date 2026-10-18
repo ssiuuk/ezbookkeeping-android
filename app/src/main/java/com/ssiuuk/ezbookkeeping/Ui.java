@@ -16,6 +16,9 @@ final class Ui {
     /** Bumped whenever data changes, so screens that were in the background reload when shown again. */
     static int dataVersion;
 
+    /** Account categories in the order people usually think of them, as the Accounts tab and account picker show them. */
+    static final int[] ACCOUNT_CATEGORY_ORDER = { 1, 2, 8, 3, 4, 5, 6, 7, 9 };
+
     private Ui() {
     }
 
@@ -27,6 +30,31 @@ final class Ui {
         int fallback = MaterialColors.getColor(avatar, com.google.android.material.R.attr.colorSecondary);
         avatar.setText(Formats.initial(name));
         avatar.setBackgroundTintList(ColorStateList.valueOf(Formats.color(hexColor, fallback)));
+    }
+
+    static String accountCategoryName(Context context, int category) {
+        switch (category) {
+            case 1:
+                return context.getString(R.string.account_category_cash);
+            case 2:
+                return context.getString(R.string.account_category_checking);
+            case 3:
+                return context.getString(R.string.account_category_credit_card);
+            case 4:
+                return context.getString(R.string.account_category_virtual);
+            case 5:
+                return context.getString(R.string.account_category_debt);
+            case 6:
+                return context.getString(R.string.account_category_receivables);
+            case 7:
+                return context.getString(R.string.account_category_investment);
+            case 8:
+                return context.getString(R.string.account_category_savings);
+            case 9:
+                return context.getString(R.string.account_category_deposit);
+            default:
+                return context.getString(R.string.account_category_other);
+        }
     }
 
     static int amountColor(Context context, int transactionType) {

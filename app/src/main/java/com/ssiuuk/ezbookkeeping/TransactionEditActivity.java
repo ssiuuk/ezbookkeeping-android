@@ -2,22 +2,42 @@ package com.ssiuuk.ezbookkeeping;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.graphics.drawable.ColorDrawable;
+import android.media.ExifInterface;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.text.format.DateFormat;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.core.content.FileProvider;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.imageview.ShapeableImageView;
+import com.google.android.material.progressindicator.CircularProgressIndicator;
+import com.google.android.material.shape.ShapeAppearanceModel;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.android.material.timepicker.MaterialTimePicker;
@@ -26,6 +46,7 @@ import com.ssiuuk.ezbookkeeping.data.Api;
 import com.ssiuuk.ezbookkeeping.data.ApiException;
 import com.ssiuuk.ezbookkeeping.data.Formats;
 import com.ssiuuk.ezbookkeeping.data.Models;
+import com.ssiuuk.ezbookkeeping.data.RecentChoices;
 import com.ssiuuk.ezbookkeeping.data.Server;
 import com.ssiuuk.ezbookkeeping.data.ServerStore;
 
@@ -33,33 +54,66 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /** Adds a new expense, income or transfer, or edits an existing one. */
 public class TransactionEditActivity extends BaseActivity {
     private static final String EXTRA_TRANSACTION_ID = "transaction_id";
     private static final String EXTRA_ACCOUNT_ID = "account_id";
+    private static final int MAX_PHOTO_SIZE = 2048;
+    private static final ExecutorService PHOTO_WORKER = Executors.newSingleThreadExecutor();
+
+    /** A photo on the form: being prepared or uploaded, or already on the server. */
+    private static final class Photo {
+        String id;
+        String url;
+        Bitmap thumbnail;
+        boolean uploading;
+    }
 
     private Server server;
     private String transactionId;
     private Models.Transaction original;
+    private boolean originalApplied;
+
+    private String bookId;
+    private List<Models.Book> books = new ArrayList<>();
+    private RecentChoices recent;
 
     private List<Models.Account> accounts = new ArrayList<>();
     private Object categoriesResult;
     private List<Models.Tag> tags = new ArrayList<>();
+    private boolean merchantsSupported;
+    private String merchantGroupId;
+    private boolean projectsSupported;
+    private List<Models.Project> projects = new ArrayList<>();
+    private boolean photosSupported = true;
 
     private int type = Models.TRANSACTION_EXPENSE;
     private Models.Category category;
     private Models.Account account;
     private Models.Account destinationAccount;
+    private boolean accountChosen;
+    private boolean destinationChosen;
     private final List<String> tagIds = new ArrayList<>();
+    private String merchantTagId;
+    private String projectId = "0";
+    private final List<Photo> photos = new ArrayList<>();
     private final Calendar time = Calendar.getInstance();
     private final String clientSessionId = UUID.randomUUID().toString();
 
+    private TextInputLayout bookLayout;
+    private TextInputEditText bookInput;
     private MaterialButtonToggleGroup typeGroup;
     private TextInputLayout amountLayout;
     private TextInputEditText amountInput;
@@ -73,12 +127,24 @@ public class TransactionEditActivity extends BaseActivity {
     private TextInputEditText destinationAmountInput;
     private TextInputEditText dateInput;
     private TextInputEditText timeInput;
+    private TextInputLayout projectLayout;
+    private TextInputEditText projectInput;
+    private TextInputLayout merchantLayout;
+    private TextInputEditText merchantInput;
     private TextInputEditText tagsInput;
     private TextInputEditText commentInput;
+    private View photosSection;
+    private View photosScroll;
+    private LinearLayout photosList;
     private MaterialButton saveButton;
     private View progress;
     private int pendingLoads;
+    private int loadGeneration;
     private boolean saving;
+
+    private Uri cameraPhoto;
+    private ActivityResultLauncher<Uri> takePhoto;
+    private ActivityResultLauncher<PickVisualMediaRequest> choosePhoto;
 
     public static Intent addIntent(Context context, String accountId) {
         return new Intent(context, TransactionEditActivity.class).putExtra(EXTRA_ACCOUNT_ID, accountId);
@@ -93,16 +159,31 @@ public class TransactionEditActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         server = ServerStore.get(this).getActiveServer();
 
+        takePhoto = registerForActivityResult(new ActivityResultContracts.TakePicture(), taken -> {
+            if (Boolean.TRUE.equals(taken) && cameraPhoto != null) {
+                addPhoto(cameraPhoto);
+            }
+        });
+        choosePhoto = registerForActivityResult(new ActivityResultContracts.PickVisualMedia(), uri -> {
+            if (uri != null) {
+                addPhoto(uri);
+            }
+        });
+
         if (server == null || !server.isSignedIn()) {
             finish();
             return;
         }
 
         transactionId = getIntent().getStringExtra(EXTRA_TRANSACTION_ID);
+        bookId = server.bookId;
+        recent = new RecentChoices(this, server, bookId);
         setContentView(R.layout.activity_transaction_edit);
         setupToolbar(transactionId == null ? R.string.add_transaction : R.string.edit_transaction, true).setNavigationIcon(R.drawable.ic_close);
         padForSystemBars(findViewById(R.id.scroll), false, true);
 
+        bookLayout = findViewById(R.id.book_layout);
+        bookInput = findViewById(R.id.book);
         typeGroup = findViewById(R.id.type_group);
         amountLayout = findViewById(R.id.amount_layout);
         amountInput = findViewById(R.id.amount);
@@ -116,8 +197,15 @@ public class TransactionEditActivity extends BaseActivity {
         destinationAmountInput = findViewById(R.id.destination_amount);
         dateInput = findViewById(R.id.date);
         timeInput = findViewById(R.id.time);
+        projectLayout = findViewById(R.id.project_layout);
+        projectInput = findViewById(R.id.project);
+        merchantLayout = findViewById(R.id.merchant_layout);
+        merchantInput = findViewById(R.id.merchant);
         tagsInput = findViewById(R.id.tags);
         commentInput = findViewById(R.id.comment);
+        photosSection = findViewById(R.id.photos_section);
+        photosScroll = findViewById(R.id.photos_scroll);
+        photosList = findViewById(R.id.photos);
         saveButton = findViewById(R.id.save_button);
         progress = findViewById(R.id.progress);
 
@@ -134,10 +222,17 @@ public class TransactionEditActivity extends BaseActivity {
             if (newType != type) {
                 type = newType;
                 category = null;
+
+                if (original == null) {
+                    applyRememberedAccounts(null);
+                }
+
                 renderAll();
             }
         });
 
+        bookInput.setOnClickListener(view -> chooseBook());
+        bookLayout.setEndIconOnClickListener(view -> chooseBook());
         categoryInput.setOnClickListener(view -> chooseCategory());
         categoryLayout.setEndIconOnClickListener(view -> chooseCategory());
         accountInput.setOnClickListener(view -> chooseAccount(false));
@@ -146,9 +241,16 @@ public class TransactionEditActivity extends BaseActivity {
         destinationAccountLayout.setEndIconOnClickListener(view -> chooseAccount(true));
         dateInput.setOnClickListener(view -> chooseDate());
         timeInput.setOnClickListener(view -> chooseTime());
+        projectInput.setOnClickListener(view -> chooseProject());
+        projectLayout.setEndIconOnClickListener(view -> chooseProject());
+        merchantInput.setOnClickListener(view -> chooseMerchant());
+        merchantLayout.setEndIconOnClickListener(view -> chooseMerchant());
         tagsInput.setOnClickListener(view -> chooseTags());
-        findViewById(R.id.tags_layout).setOnClickListener(view -> chooseTags());
         ((TextInputLayout) findViewById(R.id.tags_layout)).setEndIconOnClickListener(view -> chooseTags());
+        findViewById(R.id.take_photo_button).setOnClickListener(view -> startCamera());
+        findViewById(R.id.choose_photo_button).setOnClickListener(view -> choosePhoto.launch(new PickVisualMediaRequest.Builder()
+            .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+            .build()));
         saveButton.setOnClickListener(view -> save());
 
         amountInput.addTextChangedListener(new TextWatcher() {
@@ -166,7 +268,9 @@ public class TransactionEditActivity extends BaseActivity {
             }
         });
 
-        load();
+        loadBooks();
+        loadServerFeatures();
+        loadBookData();
 
         if (transactionId == null) {
             amountInput.requestFocus();
@@ -203,48 +307,145 @@ public class TransactionEditActivity extends BaseActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private void load() {
-        Api api = new Api(server);
-        setBusy(true);
-        pendingLoads = transactionId == null ? 3 : 4;
+    /** Talks to the book this transaction goes in, which can differ from the one selected in the app. */
+    private Api api() {
+        return new Api(server).withBook(bookId);
+    }
 
-        api.get("v1/accounts/list.json", Api.query("visible_only", "true"), Models.Account::parseList, new Api.Callback<List<Models.Account>>() {
+    private void loadBooks() {
+        if (transactionId != null) {
+            // an existing transaction stays in its book
+            return;
+        }
+
+        new Api(server).withoutBook().get("v1/books/list.json", null, Models.Book::parseList, new Api.Callback<List<Models.Book>>() {
             @Override
-            public void onSuccess(List<Models.Account> result) {
-                accounts = Models.Account.selectable(result);
-                loaded();
+            public void onSuccess(List<Models.Book> result) {
+                books = result;
+                renderAll();
             }
 
             @Override
             public void onError(ApiException error) {
-                loadFailed(error);
+                // servers without family books answer 404, and then there is nothing to choose
+            }
+        });
+    }
+
+    private void loadServerFeatures() {
+        Api.checkServer(server.url, new Api.Callback<Api.ServerInfo>() {
+            @Override
+            public void onSuccess(Api.ServerInfo result) {
+                photosSupported = result.pictures;
+                renderAll();
+            }
+
+            @Override
+            public void onError(ApiException error) {
+            }
+        });
+    }
+
+    /** Loads everything that belongs to the chosen book: accounts, categories, tags, merchants and projects. */
+    private void loadBookData() {
+        Api api = api();
+        int generation = ++loadGeneration;
+        setBusy(true);
+        pendingLoads = transactionId == null ? 5 : 6;
+
+        api.get("v1/accounts/list.json", Api.query("visible_only", "true"), Models.Account::parseList, new Api.Callback<List<Models.Account>>() {
+            @Override
+            public void onSuccess(List<Models.Account> result) {
+                if (generation == loadGeneration) {
+                    accounts = Models.Account.selectable(result);
+                    loaded();
+                }
+            }
+
+            @Override
+            public void onError(ApiException error) {
+                loadFailed(generation, error);
             }
         });
 
         api.get("v1/transaction/categories/list.json", null, result -> result, new Api.Callback<Object>() {
             @Override
             public void onSuccess(Object result) {
-                categoriesResult = result;
-                loaded();
+                if (generation == loadGeneration) {
+                    categoriesResult = result;
+                    loaded();
+                }
             }
 
             @Override
             public void onError(ApiException error) {
-                loadFailed(error);
+                loadFailed(generation, error);
             }
         });
 
         api.get("v1/transaction/tags/list.json", null, Models.Tag::parseList, new Api.Callback<List<Models.Tag>>() {
             @Override
             public void onSuccess(List<Models.Tag> result) {
-                tags = result;
-                loaded();
+                if (generation == loadGeneration) {
+                    tags = result;
+                    loaded();
+                }
             }
 
             @Override
             public void onError(ApiException error) {
                 // tags are optional
-                loaded();
+                if (generation == loadGeneration) {
+                    loaded();
+                }
+            }
+        });
+
+        api.get("v1/transaction/tags/groups/list.json", null, Models.TagGroup::parseList, new Api.Callback<List<Models.TagGroup>>() {
+            @Override
+            public void onSuccess(List<Models.TagGroup> result) {
+                if (generation == loadGeneration) {
+                    merchantsSupported = true;
+                    merchantGroupId = null;
+
+                    for (Models.TagGroup group : result) {
+                        if (isMerchantGroupName(group.name)) {
+                            merchantGroupId = group.id;
+                            break;
+                        }
+                    }
+
+                    loaded();
+                }
+            }
+
+            @Override
+            public void onError(ApiException error) {
+                // older servers have no tag groups, so merchants can't be kept apart from other tags
+                if (generation == loadGeneration) {
+                    merchantsSupported = false;
+                    loaded();
+                }
+            }
+        });
+
+        api.get("v1/projects/list.json", null, Models.Project::parseList, new Api.Callback<List<Models.Project>>() {
+            @Override
+            public void onSuccess(List<Models.Project> result) {
+                if (generation == loadGeneration) {
+                    projectsSupported = true;
+                    projects = result;
+                    loaded();
+                }
+            }
+
+            @Override
+            public void onError(ApiException error) {
+                // only this app's server has projects
+                if (generation == loadGeneration) {
+                    projectsSupported = false;
+                    loaded();
+                }
             }
         });
 
@@ -253,16 +454,28 @@ public class TransactionEditActivity extends BaseActivity {
                 result -> Models.Transaction.parse((JSONObject) result), new Api.Callback<Models.Transaction>() {
                     @Override
                     public void onSuccess(Models.Transaction result) {
-                        original = result;
-                        loaded();
+                        if (generation == loadGeneration) {
+                            original = result;
+                            loaded();
+                        }
                     }
 
                     @Override
                     public void onError(ApiException error) {
-                        loadFailed(error);
+                        loadFailed(generation, error);
                     }
                 });
         }
+    }
+
+    private boolean isMerchantGroupName(String name) {
+        if (name == null) {
+            return false;
+        }
+
+        String trimmed = name.trim();
+        return trimmed.equalsIgnoreCase("Merchants") || trimmed.equalsIgnoreCase("Merchant")
+            || trimmed.equalsIgnoreCase(getString(R.string.merchants_tag_group));
     }
 
     private void loaded() {
@@ -273,31 +486,34 @@ public class TransactionEditActivity extends BaseActivity {
         setBusy(false);
 
         if (original != null) {
-            fillFromOriginal();
+            if (!originalApplied) {
+                originalApplied = true;
+                fillFromOriginal();
+            }
         } else {
             String accountId = getIntent().getStringExtra(EXTRA_ACCOUNT_ID);
-
-            if (accountId == null) {
-                accountId = server.getUser().optString("defaultAccountId", "0");
-            }
-
             account = findAccount(accountId);
+            accountChosen = account != null;
 
-            if (account == null && !accounts.isEmpty()) {
-                account = accounts.get(0);
+            if (account == null) {
+                applyRememberedAccounts(null);
             }
         }
 
         renderAll();
     }
 
-    private void loadFailed(ApiException error) {
-        pendingLoads = Integer.MAX_VALUE;
+    private void loadFailed(int generation, ApiException error) {
+        if (generation != loadGeneration) {
+            return;
+        }
+
+        loadGeneration++;
         setBusy(false);
         new MaterialAlertDialogBuilder(this)
             .setTitle(R.string.something_went_wrong)
             .setMessage(error.getMessage())
-            .setPositiveButton(R.string.retry, (dialog, which) -> load())
+            .setPositiveButton(R.string.retry, (dialog, which) -> loadBookData())
             .setNegativeButton(R.string.cancel, (dialog, which) -> finish())
             .setCancelable(false)
             .show();
@@ -316,19 +532,80 @@ public class TransactionEditActivity extends BaseActivity {
         amountInput.setText(Formats.editableAmount(original.sourceAmount));
         account = findAccount(original.sourceAccountId);
         destinationAccount = findAccount(original.destinationAccountId);
+        accountChosen = true;
+        destinationChosen = true;
         category = findCategory(original.categoryId);
         tagIds.clear();
-        tagIds.addAll(original.tagIds);
+        merchantTagId = null;
+
+        for (String tagId : original.tagIds) {
+            if (merchantTagId == null && isMerchantTag(tagId)) {
+                merchantTagId = tagId;
+            } else {
+                tagIds.add(tagId);
+            }
+        }
+
+        projectId = TextUtils.isEmpty(original.projectId) ? "0" : original.projectId;
         time.setTimeInMillis(original.time * 1000);
         commentInput.setText(original.comment);
 
         if (type == Models.TRANSACTION_TRANSFER) {
             destinationAmountInput.setText(Formats.editableAmount(original.destinationAmount));
         }
+
+        photos.clear();
+
+        for (int i = 0; i < original.pictureIds.size(); i++) {
+            Photo photo = new Photo();
+            photo.id = original.pictureIds.get(i);
+            photo.url = i < original.pictureUrls.size() ? original.pictureUrls.get(i) : null;
+            photos.add(photo);
+            loadThumbnail(photo);
+        }
+    }
+
+    /** Starts a new transaction with the accounts used last time for this category, or this kind of transaction. */
+    private void applyRememberedAccounts(String categoryId) {
+        if (!accountChosen) {
+            Models.Account remembered = findAccount(recent.accountForCategory(categoryId, false));
+
+            if (remembered == null && categoryId == null) {
+                remembered = findAccount(recent.accountForType(type, false));
+
+                if (remembered == null) {
+                    remembered = findAccount(server.getUser().optString("defaultAccountId", "0"));
+                }
+
+                if (remembered == null && !accounts.isEmpty()) {
+                    remembered = accounts.get(0);
+                }
+            }
+
+            if (remembered != null) {
+                account = remembered;
+            }
+        }
+
+        if (!destinationChosen && type == Models.TRANSACTION_TRANSFER) {
+            Models.Account remembered = findAccount(recent.accountForCategory(categoryId, true));
+
+            if (remembered == null && categoryId == null) {
+                remembered = findAccount(recent.accountForType(type, true));
+            }
+
+            if (remembered != null) {
+                destinationAccount = remembered;
+            }
+        }
     }
 
     private void renderAll() {
         boolean transfer = type == Models.TRANSACTION_TRANSFER;
+        boolean canChooseBook = transactionId == null && books.size() > 1;
+        bookLayout.setVisibility(canChooseBook ? View.VISIBLE : View.GONE);
+        bookInput.setText(bookLabel(findBook(bookId)));
+
         categoryInput.setText(category == null ? "" : categoryLabel(category));
         accountLayout.setHint(transfer ? R.string.from_account : R.string.account);
         accountInput.setText(account == null ? "" : account.name);
@@ -343,6 +620,14 @@ public class TransactionEditActivity extends BaseActivity {
         dateInput.setText(Formats.date(this, time.getTimeInMillis()));
         timeInput.setText(Formats.time(this, time.getTimeInMillis()));
 
+        Models.Project project = findProject(projectId);
+        projectLayout.setVisibility(projectsSupported && (!projects.isEmpty() || project != null) ? View.VISIBLE : View.GONE);
+        projectInput.setText(project == null ? "" : project.name);
+
+        Models.Tag merchant = findTag(merchantTagId);
+        merchantLayout.setVisibility(merchantsSupported ? View.VISIBLE : View.GONE);
+        merchantInput.setText(merchant == null ? "" : merchant.name);
+
         List<String> names = new ArrayList<>();
 
         for (Models.Tag tag : tags) {
@@ -352,11 +637,71 @@ public class TransactionEditActivity extends BaseActivity {
         }
 
         tagsInput.setText(TextUtils.join(", ", names));
+        renderPhotos();
+    }
+
+    private void renderPhotos() {
+        photosSection.setVisibility(photosSupported || !photos.isEmpty() ? View.VISIBLE : View.GONE);
+        findViewById(R.id.take_photo_button).setVisibility(photosSupported ? View.VISIBLE : View.GONE);
+        findViewById(R.id.choose_photo_button).setVisibility(photosSupported ? View.VISIBLE : View.GONE);
+        photosScroll.setVisibility(photos.isEmpty() ? View.GONE : View.VISIBLE);
+        photosList.removeAllViews();
+
+        int size = Math.round(96 * getResources().getDisplayMetrics().density);
+        int gap = Math.round(8 * getResources().getDisplayMetrics().density);
+
+        for (Photo photo : photos) {
+            FrameLayout frame = new FrameLayout(this);
+            LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(size, size);
+            frameParams.setMarginEnd(gap);
+            frameParams.topMargin = gap / 2;
+            frameParams.bottomMargin = gap / 2;
+
+            ShapeableImageView image = new ShapeableImageView(this);
+            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            image.setShapeAppearanceModel(ShapeAppearanceModel.builder().setAllCornerSizes(gap * 1.5f).build());
+            image.setContentDescription(getString(R.string.photo_description));
+
+            if (photo.thumbnail != null) {
+                image.setImageBitmap(photo.thumbnail);
+            } else {
+                // a placeholder until the preview arrives, drawn as an image so it gets the rounded corners
+                image.setImageDrawable(new ColorDrawable(MaterialColors.getColor(image, com.google.android.material.R.attr.colorSurfaceVariant)));
+            }
+
+            image.setAlpha(photo.uploading ? 0.5f : 1f);
+            frame.addView(image, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+            if (photo.uploading) {
+                CircularProgressIndicator spinner = new CircularProgressIndicator(this);
+                spinner.setIndeterminate(true);
+                frame.addView(spinner, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+            } else {
+                frame.setOnClickListener(view -> new MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.remove_photo_title)
+                    .setNegativeButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.remove, (dialog, which) -> {
+                        photos.remove(photo);
+                        renderPhotos();
+                    })
+                    .show());
+            }
+
+            photosList.addView(frame, frameParams);
+        }
     }
 
     private String categoryLabel(Models.Category category) {
         Models.Category parent = findParentCategory(category.id);
         return parent == null ? category.name : parent.name + " › " + category.name;
+    }
+
+    private String bookLabel(Models.Book book) {
+        if (book == null || book.isPersonal) {
+            return getString(R.string.my_book);
+        }
+
+        return book.isOwner ? book.name : book.name + " · " + getString(R.string.book_owner, book.ownerNickname);
     }
 
     private List<Models.Category> categoriesOfType() {
@@ -405,6 +750,101 @@ public class TransactionEditActivity extends BaseActivity {
         return null;
     }
 
+    private Models.Book findBook(String id) {
+        for (Models.Book book : books) {
+            if (id == null ? book.isPersonal : book.id.equals(id)) {
+                return book;
+            }
+        }
+
+        return null;
+    }
+
+    private Models.Project findProject(String id) {
+        if (id == null || "0".equals(id)) {
+            return null;
+        }
+
+        for (Models.Project project : projects) {
+            if (project.id.equals(id)) {
+                return project;
+            }
+        }
+
+        return null;
+    }
+
+    private Models.Tag findTag(String id) {
+        if (id == null) {
+            return null;
+        }
+
+        for (Models.Tag tag : tags) {
+            if (tag.id.equals(id)) {
+                return tag;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isMerchantTag(String tagId) {
+        Models.Tag tag = findTag(tagId);
+        return tag != null && merchantGroupId != null && merchantGroupId.equals(tag.groupId);
+    }
+
+    private void chooseBook() {
+        List<ChoiceSheet.Choice> choices = new ArrayList<>();
+
+        for (Models.Book book : books) {
+            ChoiceSheet.Choice choice = ChoiceSheet.Choice.item(book.isPersonal ? "" : book.id, bookLabel(book), null, null);
+            choice.selected = book == findBook(bookId);
+            choices.add(choice);
+        }
+
+        ChoiceSheet.show(this, getString(R.string.choose_book), choices, choice -> {
+            String chosen = choice.id.isEmpty() ? null : choice.id;
+
+            if (TextUtils.equals(chosen, bookId)) {
+                return;
+            }
+
+            boolean hasEntries = category != null || !tagIds.isEmpty() || merchantTagId != null || !"0".equals(projectId) || !photos.isEmpty();
+
+            if (!hasEntries) {
+                switchBook(chosen);
+                return;
+            }
+
+            new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.book_change_title)
+                .setMessage(R.string.book_change_message)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.change, (dialog, which) -> switchBook(chosen))
+                .show();
+        });
+    }
+
+    private void switchBook(String chosen) {
+        bookId = chosen;
+        recent = new RecentChoices(this, server, bookId);
+        category = null;
+        account = null;
+        destinationAccount = null;
+        accountChosen = false;
+        destinationChosen = false;
+        tagIds.clear();
+        merchantTagId = null;
+        projectId = "0";
+        photos.clear();
+        accounts = new ArrayList<>();
+        tags = new ArrayList<>();
+        projects = new ArrayList<>();
+        categoriesResult = null;
+        renderAll();
+        loadBookData();
+    }
+
     private void chooseCategory() {
         List<ChoiceSheet.Choice> choices = new ArrayList<>();
 
@@ -435,6 +875,11 @@ public class TransactionEditActivity extends BaseActivity {
         ChoiceSheet.show(this, getString(R.string.choose_category), choices, choice -> {
             category = findCategory(choice.id);
             categoryLayout.setError(null);
+
+            if (original == null && category != null) {
+                applyRememberedAccounts(category.id);
+            }
+
             renderAll();
         });
     }
@@ -442,11 +887,35 @@ public class TransactionEditActivity extends BaseActivity {
     private void chooseAccount(boolean destination) {
         List<ChoiceSheet.Choice> choices = new ArrayList<>();
         Models.Account current = destination ? destinationAccount : account;
+        List<Integer> categories = new ArrayList<>();
+
+        for (int accountCategory : Ui.ACCOUNT_CATEGORY_ORDER) {
+            categories.add(accountCategory);
+        }
 
         for (Models.Account candidate : accounts) {
-            ChoiceSheet.Choice choice = ChoiceSheet.Choice.item(candidate.id, candidate.name, Formats.amount(candidate.balance, candidate.currency), candidate.color);
-            choice.selected = current != null && current.id.equals(candidate.id);
-            choices.add(choice);
+            if (!categories.contains(candidate.category)) {
+                categories.add(candidate.category);
+            }
+        }
+
+        for (int accountCategory : categories) {
+            boolean headerAdded = false;
+
+            for (Models.Account candidate : accounts) {
+                if (candidate.category != accountCategory) {
+                    continue;
+                }
+
+                if (!headerAdded) {
+                    choices.add(ChoiceSheet.Choice.header(Ui.accountCategoryName(this, accountCategory)));
+                    headerAdded = true;
+                }
+
+                ChoiceSheet.Choice choice = ChoiceSheet.Choice.item(candidate.id, candidate.name, Formats.amount(candidate.balance, candidate.currency), candidate.color);
+                choice.selected = current != null && current.id.equals(candidate.id);
+                choices.add(choice);
+            }
         }
 
         if (choices.isEmpty()) {
@@ -457,9 +926,11 @@ public class TransactionEditActivity extends BaseActivity {
         ChoiceSheet.show(this, getString(R.string.choose_account), choices, choice -> {
             if (destination) {
                 destinationAccount = findAccount(choice.id);
+                destinationChosen = true;
                 destinationAccountLayout.setError(null);
             } else {
                 account = findAccount(choice.id);
+                accountChosen = true;
                 accountLayout.setError(null);
             }
 
@@ -467,11 +938,161 @@ public class TransactionEditActivity extends BaseActivity {
         });
     }
 
+    private void chooseProject() {
+        List<ChoiceSheet.Choice> choices = new ArrayList<>();
+        ChoiceSheet.Choice none = ChoiceSheet.Choice.symbol("0", getString(R.string.no_project), "–");
+        none.selected = findProject(projectId) == null;
+        choices.add(none);
+
+        for (Models.Project project : projects) {
+            if (project.hidden && !project.id.equals(projectId)) {
+                continue;
+            }
+
+            ChoiceSheet.Choice choice = ChoiceSheet.Choice.item(project.id, project.name, null, null);
+            choice.selected = project.id.equals(projectId);
+            choices.add(choice);
+        }
+
+        ChoiceSheet.show(this, getString(R.string.choose_project), choices, choice -> {
+            projectId = choice.id;
+            renderAll();
+        });
+    }
+
+    private void chooseMerchant() {
+        List<ChoiceSheet.Choice> choices = new ArrayList<>();
+        ChoiceSheet.Choice none = ChoiceSheet.Choice.symbol("", getString(R.string.no_merchant), "–");
+        none.selected = merchantTagId == null;
+        choices.add(none);
+
+        for (Models.Tag tag : tags) {
+            if (merchantGroupId == null || !merchantGroupId.equals(tag.groupId) || (tag.hidden && !tag.id.equals(merchantTagId))) {
+                continue;
+            }
+
+            ChoiceSheet.Choice choice = ChoiceSheet.Choice.item(tag.id, tag.name, null, null);
+            choice.selected = tag.id.equals(merchantTagId);
+            choices.add(choice);
+        }
+
+        choices.add(ChoiceSheet.Choice.symbol("+", getString(R.string.add_merchant), "+"));
+
+        ChoiceSheet.show(this, getString(R.string.choose_merchant), choices, choice -> {
+            if ("+".equals(choice.id)) {
+                addMerchant();
+            } else {
+                merchantTagId = choice.id.isEmpty() ? null : choice.id;
+                renderAll();
+            }
+        });
+    }
+
+    private void addMerchant() {
+        int padding = getResources().getDimensionPixelSize(R.dimen.dialog_padding);
+        TextInputLayout layout = new TextInputLayout(this);
+        layout.setHint(getString(R.string.merchant_name));
+        layout.setPadding(padding, padding / 2, padding, 0);
+        TextInputEditText input = new TextInputEditText(layout.getContext());
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        input.setSingleLine(true);
+        layout.addView(input);
+        input.requestFocus();
+
+        new MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.new_merchant)
+            .setView(layout)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.add, (dialog, which) -> {
+                String name = input.getText() == null ? "" : input.getText().toString().trim();
+
+                if (!name.isEmpty()) {
+                    createMerchant(name);
+                }
+            })
+            .show()
+            .getWindow()
+            .setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+    }
+
+    /** Merchants are tags in a "Merchants" tag group, so reports can already filter by them. */
+    private void createMerchant(String name) {
+        for (Models.Tag tag : tags) {
+            if (merchantGroupId != null && merchantGroupId.equals(tag.groupId) && tag.name.equalsIgnoreCase(name)) {
+                merchantTagId = tag.id;
+                renderAll();
+                return;
+            }
+        }
+
+        setBusy(true);
+
+        if (merchantGroupId == null) {
+            JSONObject body = new JSONObject();
+
+            try {
+                body.put("name", getString(R.string.merchants_tag_group));
+            } catch (JSONException ex) {
+                return;
+            }
+
+            api().post("v1/transaction/tags/groups/add.json", body, result -> Models.TagGroup.parse((JSONObject) result), new Api.Callback<Models.TagGroup>() {
+                @Override
+                public void onSuccess(Models.TagGroup result) {
+                    merchantGroupId = result.id;
+                    createMerchantTag(name);
+                }
+
+                @Override
+                public void onError(ApiException error) {
+                    setBusy(false);
+                    showMessage(error.getMessage());
+                }
+            });
+        } else {
+            createMerchantTag(name);
+        }
+    }
+
+    private void createMerchantTag(String name) {
+        JSONObject body = new JSONObject();
+
+        try {
+            body.put("groupId", merchantGroupId);
+            body.put("name", name);
+        } catch (JSONException ex) {
+            return;
+        }
+
+        api().post("v1/transaction/tags/add.json", body, result -> Models.Tag.parse((JSONObject) result), new Api.Callback<Models.Tag>() {
+            @Override
+            public void onSuccess(Models.Tag result) {
+                setBusy(false);
+
+                if (TextUtils.isEmpty(result.groupId) || "0".equals(result.groupId)) {
+                    result.groupId = merchantGroupId;
+                }
+
+                tags.add(result);
+                merchantTagId = result.id;
+                renderAll();
+            }
+
+            @Override
+            public void onError(ApiException error) {
+                setBusy(false);
+                showMessage(error.getMessage());
+            }
+        });
+    }
+
     private void chooseTags() {
         List<Models.Tag> visible = new ArrayList<>();
 
         for (Models.Tag tag : tags) {
-            if (!tag.hidden || tagIds.contains(tag.id)) {
+            boolean merchant = merchantGroupId != null && merchantGroupId.equals(tag.groupId);
+
+            if (!merchant && (!tag.hidden || tagIds.contains(tag.id))) {
                 visible.add(tag);
             }
         }
@@ -541,9 +1162,183 @@ public class TransactionEditActivity extends BaseActivity {
         picker.show(getSupportFragmentManager(), "time");
     }
 
+    private void startCamera() {
+        File folder = new File(getCacheDir(), "photos");
+
+        if (!folder.isDirectory() && !folder.mkdirs()) {
+            showMessage(getString(R.string.photo_unreadable));
+            return;
+        }
+
+        File file = new File(folder, UUID.randomUUID() + ".jpg");
+        cameraPhoto = FileProvider.getUriForFile(this, getPackageName() + ".files", file);
+        takePhoto.launch(cameraPhoto);
+    }
+
+    /** Shrinks the photo, shows it on the form and uploads it to the server in the background. */
+    private void addPhoto(Uri uri) {
+        Photo photo = new Photo();
+        photo.uploading = true;
+        photos.add(photo);
+        renderPhotos();
+        Api uploadApi = api();
+
+        PHOTO_WORKER.execute(() -> {
+            Bitmap bitmap = readScaledBitmap(uri, MAX_PHOTO_SIZE);
+            byte[] jpeg = null;
+            Bitmap thumbnail = null;
+
+            if (bitmap != null) {
+                ByteArrayOutputStream output = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, output);
+                jpeg = output.toByteArray();
+                thumbnail = thumbnailOf(bitmap);
+            }
+
+            byte[] data = jpeg;
+            Bitmap preview = thumbnail;
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+
+                if (data == null) {
+                    photos.remove(photo);
+                    renderPhotos();
+                    showMessage(getString(R.string.photo_unreadable));
+                    return;
+                }
+
+                photo.thumbnail = preview;
+                renderPhotos();
+                uploadApi.upload("v1/transaction/pictures/upload.json", "picture", "photo.jpg", "image/jpeg", data,
+                    Api.query("clientSessionId", UUID.randomUUID().toString()), Models.Picture::parse, new Api.Callback<Models.Picture>() {
+                        @Override
+                        public void onSuccess(Models.Picture result) {
+                            photo.id = result.id;
+                            photo.url = result.url;
+                            photo.uploading = false;
+                            renderPhotos();
+                        }
+
+                        @Override
+                        public void onError(ApiException error) {
+                            photos.remove(photo);
+                            renderPhotos();
+                            showMessage(getString(R.string.photo_upload_failed, error.getMessage()));
+                        }
+                    });
+            });
+        });
+    }
+
+    private void loadThumbnail(Photo photo) {
+        if (TextUtils.isEmpty(photo.url)) {
+            return;
+        }
+
+        // the server builds picture links from its configured root address, which may not be how this phone reaches it
+        int path = photo.url.indexOf("/pictures/");
+        String url = path >= 0 ? server.url + photo.url.substring(path) : photo.url;
+
+        api().download(url, new Api.Callback<byte[]>() {
+            @Override
+            public void onSuccess(byte[] result) {
+                PHOTO_WORKER.execute(() -> {
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(result, 0, result.length);
+                    Bitmap thumbnail = bitmap == null ? null : thumbnailOf(bitmap);
+
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed() && thumbnail != null) {
+                            photo.thumbnail = thumbnail;
+                            renderPhotos();
+                        }
+                    });
+                });
+            }
+
+            @Override
+            public void onError(ApiException error) {
+                // the photo stays attached; only its preview is missing
+            }
+        });
+    }
+
+    private Bitmap readScaledBitmap(Uri uri, int maxSize) {
+        try {
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+
+            try (InputStream input = getContentResolver().openInputStream(uri)) {
+                BitmapFactory.decodeStream(input, null, bounds);
+            }
+
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+                return null;
+            }
+
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 1;
+
+            while (Math.max(bounds.outWidth, bounds.outHeight) / (options.inSampleSize * 2) >= maxSize) {
+                options.inSampleSize *= 2;
+            }
+
+            Bitmap bitmap;
+
+            try (InputStream input = getContentResolver().openInputStream(uri)) {
+                bitmap = BitmapFactory.decodeStream(input, null, options);
+            }
+
+            if (bitmap == null) {
+                return null;
+            }
+
+            int orientation;
+
+            try (InputStream input = getContentResolver().openInputStream(uri)) {
+                orientation = input == null ? ExifInterface.ORIENTATION_NORMAL
+                    : new ExifInterface(input).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+            }
+
+            float scale = Math.min(1f, (float) maxSize / Math.max(bitmap.getWidth(), bitmap.getHeight()));
+            Matrix matrix = new Matrix();
+            matrix.postScale(scale, scale);
+
+            if (orientation == ExifInterface.ORIENTATION_ROTATE_90) {
+                matrix.postRotate(90);
+            } else if (orientation == ExifInterface.ORIENTATION_ROTATE_180) {
+                matrix.postRotate(180);
+            } else if (orientation == ExifInterface.ORIENTATION_ROTATE_270) {
+                matrix.postRotate(270);
+            }
+
+            if (matrix.isIdentity()) {
+                return bitmap;
+            }
+
+            return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+        } catch (IOException | SecurityException | OutOfMemoryError ex) {
+            return null;
+        }
+    }
+
+    private static Bitmap thumbnailOf(Bitmap bitmap) {
+        int size = 320;
+        float scale = Math.min(1f, (float) size / Math.min(bitmap.getWidth(), bitmap.getHeight()));
+        return Bitmap.createScaledBitmap(bitmap, Math.max(1, Math.round(bitmap.getWidth() * scale)), Math.max(1, Math.round(bitmap.getHeight() * scale)), true);
+    }
+
     private void save() {
         if (saving) {
             return;
+        }
+
+        for (Photo photo : photos) {
+            if (photo.uploading) {
+                showMessage(getString(R.string.photo_still_uploading));
+                return;
+            }
         }
 
         Long amount = Formats.parseAmount(amountInput.getText() == null ? "" : amountInput.getText().toString());
@@ -589,6 +1384,20 @@ public class TransactionEditActivity extends BaseActivity {
             return;
         }
 
+        List<String> allTagIds = new ArrayList<>(tagIds);
+
+        if (merchantTagId != null && !allTagIds.contains(merchantTagId)) {
+            allTagIds.add(merchantTagId);
+        }
+
+        List<String> pictureIds = new ArrayList<>();
+
+        for (Photo photo : photos) {
+            if (photo.id != null) {
+                pictureIds.add(photo.id);
+            }
+        }
+
         JSONObject body = new JSONObject();
 
         try {
@@ -607,9 +1416,9 @@ public class TransactionEditActivity extends BaseActivity {
             body.put("sourceAmount", amount);
             body.put("destinationAmount", type == Models.TRANSACTION_TRANSFER ? destinationAmount : 0);
             body.put("hideAmount", original != null && original.hideAmount);
-            body.put("tagIds", new JSONArray(tagIds));
-            body.put("pictureIds", new JSONArray(original == null ? new ArrayList<String>() : original.pictureIds));
-            body.put("projectId", original == null ? "0" : original.projectId);
+            body.put("tagIds", new JSONArray(allTagIds));
+            body.put("pictureIds", new JSONArray(pictureIds));
+            body.put("projectId", projectId == null ? "0" : projectId);
             body.put("comment", commentInput.getText() == null ? "" : commentInput.getText().toString().trim());
 
             if (original != null && original.geoLocation != null) {
@@ -621,9 +1430,15 @@ public class TransactionEditActivity extends BaseActivity {
 
         saving = true;
         setBusy(true);
-        new Api(server).post(original == null ? "v1/transactions/add.json" : "v1/transactions/modify.json", body, null, new Api.Callback<Object>() {
+        String savedCategoryId = category.id;
+        String savedAccountId = account.id;
+        String savedDestinationId = type == Models.TRANSACTION_TRANSFER ? destinationAccount.id : null;
+        int savedType = type;
+
+        api().post(original == null ? "v1/transactions/add.json" : "v1/transactions/modify.json", body, null, new Api.Callback<Object>() {
             @Override
             public void onSuccess(Object result) {
+                recent.remember(savedType, savedCategoryId, savedAccountId, savedDestinationId);
                 Ui.dataChanged();
                 finish();
             }
@@ -656,7 +1471,7 @@ public class TransactionEditActivity extends BaseActivity {
                 }
 
                 setBusy(true);
-                new Api(server).post("v1/transactions/delete.json", body, null, new Api.Callback<Object>() {
+                api().post("v1/transactions/delete.json", body, null, new Api.Callback<Object>() {
                     @Override
                     public void onSuccess(Object result) {
                         Ui.dataChanged();

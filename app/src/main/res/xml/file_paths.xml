@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- photos taken with the camera for a transaction, before they are uploaded -->
+    <cache-path
+        name="photos"
+        path="photos/" />
+</paths>
