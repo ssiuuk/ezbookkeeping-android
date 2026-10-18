@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ezBookkeeping</string>
+    <string name="setup_title">Connect to your server</string>
+    <string name="setup_description">Enter the address you open ezBookkeeping at in your browser, for example https://money.example.com or http://192.168.1.10:8080</string>
+    <string name="server_address_hint">Server address</string>
+    <string name="connect">Connect</string>
+    <string name="invalid_server_address">Please enter a valid server address</string>
+    <string name="change_server">Change server</string>
+    <string name="load_failed_title">Unable to reach the server</string>
+    <string name="retry">Retry</string>
+</resources>

@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.ssiuuk.ezbookkeeping'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.ssiuuk.ezbookkeeping'
+        minSdk 24
+        targetSdk 35
+        versionCode Integer.parseInt(System.getenv('APP_VERSION_CODE') ?: '1')
+        versionName System.getenv('APP_VERSION_NAME') ?: '1.0'
+    }
+
+    signingConfigs {
+        release {
+            // set by the build workflow when the ANDROID_KEYSTORE_BASE64 secret exists
+            def keystorePath = System.getenv('ANDROID_KEYSTORE_PATH')
+
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig System.getenv('ANDROID_KEYSTORE_PATH') ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
