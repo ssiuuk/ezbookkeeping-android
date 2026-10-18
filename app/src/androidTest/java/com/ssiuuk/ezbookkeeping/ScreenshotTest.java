@@ -137,9 +137,7 @@ public class ScreenshotTest {
             find(By.res(packageName, "account").text("Credit card"));
             settle();
             shot("13-remembered-account");
-            device.pressBack();
-
-            find(By.res(packageName, "action_settings")).click();
+            backTo(By.res(packageName, "action_settings")).click();
             find(By.text("Theme"));
             shot("14-settings");
             device.pressBack();
@@ -177,6 +175,20 @@ public class ScreenshotTest {
             device.executeShellCommand("cp " + new File(context.getExternalCacheDir(), "hierarchy.xml").getAbsolutePath() + " " + SCREENS + "/99-hierarchy.xml");
             throw error;
         }
+    }
+
+    /** Presses back until the selector shows, since the first press may only close the keyboard. */
+    private UiObject2 backTo(BySelector selector) {
+        for (int i = 0; i < 3; i++) {
+            device.pressBack();
+            UiObject2 found = device.wait(Until.findObject(selector), 3000);
+
+            if (found != null) {
+                return found;
+            }
+        }
+
+        return find(selector);
     }
 
     /** Scrolls the form until the field is on screen, since the add screen is taller than the phone. */
