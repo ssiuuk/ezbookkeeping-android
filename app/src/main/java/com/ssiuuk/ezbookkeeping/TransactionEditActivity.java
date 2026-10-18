@@ -10,6 +10,7 @@ import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.InputFilter;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -71,6 +72,7 @@ public class TransactionEditActivity extends BaseActivity {
     private static final String EXTRA_TRANSACTION_ID = "transaction_id";
     private static final String EXTRA_ACCOUNT_ID = "account_id";
     private static final int MAX_PHOTO_SIZE = 2048;
+    private static final int MAX_MERCHANT_LENGTH = 64;
     private static final ExecutorService PHOTO_WORKER = Executors.newSingleThreadExecutor();
 
     /** A photo on the form: being prepared or uploaded, or already on the server. */
@@ -94,7 +96,7 @@ public class TransactionEditActivity extends BaseActivity {
     private Object categoriesResult;
     private List<Models.Tag> tags = new ArrayList<>();
     private boolean merchantsSupported;
-    private String merchantGroupId;
+    private List<String> merchants = new ArrayList<>();
     private boolean projectsSupported;
     private List<Models.Project> projects = new ArrayList<>();
     private boolean photosSupported = true;
@@ -106,7 +108,7 @@ public class TransactionEditActivity extends BaseActivity {
     private boolean accountChosen;
     private boolean destinationChosen;
     private final List<String> tagIds = new ArrayList<>();
-    private String merchantTagId;
+    private String merchant = "";
     private String projectId = "0";
     private final List<Photo> photos = new ArrayList<>();
     private final Calendar time = Calendar.getInstance();
@@ -401,27 +403,19 @@ public class TransactionEditActivity extends BaseActivity {
             }
         });
 
-        api.get("v1/transaction/tags/groups/list.json", null, Models.TagGroup::parseList, new Api.Callback<List<Models.TagGroup>>() {
+        api.get("v1/transactions/merchants/list.json", null, TransactionEditActivity::parseMerchants, new Api.Callback<List<String>>() {
             @Override
-            public void onSuccess(List<Models.TagGroup> result) {
+            public void onSuccess(List<String> result) {
                 if (generation == loadGeneration) {
                     merchantsSupported = true;
-                    merchantGroupId = null;
-
-                    for (Models.TagGroup group : result) {
-                        if (isMerchantGroupName(group.name)) {
-                            merchantGroupId = group.id;
-                            break;
-                        }
-                    }
-
+                    merchants = result;
                     loaded();
                 }
             }
 
             @Override
             public void onError(ApiException error) {
-                // older servers have no tag groups, so merchants can't be kept apart from other tags
+                // only this app's server keeps a merchant on each transaction
                 if (generation == loadGeneration) {
                     merchantsSupported = false;
                     loaded();
@@ -468,14 +462,19 @@ public class TransactionEditActivity extends BaseActivity {
         }
     }
 
-    private boolean isMerchantGroupName(String name) {
-        if (name == null) {
-            return false;
+    private static List<String> parseMerchants(Object result) {
+        List<String> names = new ArrayList<>();
+        JSONArray array = result instanceof JSONArray ? (JSONArray) result : new JSONArray();
+
+        for (int i = 0; i < array.length(); i++) {
+            String name = array.optString(i, "").trim();
+
+            if (!name.isEmpty()) {
+                names.add(name);
+            }
         }
 
-        String trimmed = name.trim();
-        return trimmed.equalsIgnoreCase("Merchants") || trimmed.equalsIgnoreCase("Merchant")
-            || trimmed.equalsIgnoreCase(getString(R.string.merchants_tag_group));
+        return names;
     }
 
     private void loaded() {
@@ -536,15 +535,8 @@ public class TransactionEditActivity extends BaseActivity {
         destinationChosen = true;
         category = findCategory(original.categoryId);
         tagIds.clear();
-        merchantTagId = null;
-
-        for (String tagId : original.tagIds) {
-            if (merchantTagId == null && isMerchantTag(tagId)) {
-                merchantTagId = tagId;
-            } else {
-                tagIds.add(tagId);
-            }
-        }
+        tagIds.addAll(original.tagIds);
+        merchant = original.merchant == null ? "" : original.merchant;
 
         projectId = TextUtils.isEmpty(original.projectId) ? "0" : original.projectId;
         time.setTimeInMillis(original.time * 1000);
@@ -624,9 +616,8 @@ public class TransactionEditActivity extends BaseActivity {
         projectLayout.setVisibility(projectsSupported && (!projects.isEmpty() || project != null) ? View.VISIBLE : View.GONE);
         projectInput.setText(project == null ? "" : project.name);
 
-        Models.Tag merchant = findTag(merchantTagId);
-        merchantLayout.setVisibility(merchantsSupported ? View.VISIBLE : View.GONE);
-        merchantInput.setText(merchant == null ? "" : merchant.name);
+        merchantLayout.setVisibility(merchantsSupported || !merchant.isEmpty() ? View.VISIBLE : View.GONE);
+        merchantInput.setText(merchant);
 
         List<String> names = new ArrayList<>();
 
@@ -788,11 +779,6 @@ public class TransactionEditActivity extends BaseActivity {
         return null;
     }
 
-    private boolean isMerchantTag(String tagId) {
-        Models.Tag tag = findTag(tagId);
-        return tag != null && merchantGroupId != null && merchantGroupId.equals(tag.groupId);
-    }
-
     private void chooseBook() {
         List<ChoiceSheet.Choice> choices = new ArrayList<>();
 
@@ -809,7 +795,7 @@ public class TransactionEditActivity extends BaseActivity {
                 return;
             }
 
-            boolean hasEntries = category != null || !tagIds.isEmpty() || merchantTagId != null || !"0".equals(projectId) || !photos.isEmpty();
+            boolean hasEntries = category != null || !tagIds.isEmpty() || !merchant.isEmpty() || !"0".equals(projectId) || !photos.isEmpty();
 
             if (!hasEntries) {
                 switchBook(chosen);
@@ -834,7 +820,8 @@ public class TransactionEditActivity extends BaseActivity {
         accountChosen = false;
         destinationChosen = false;
         tagIds.clear();
-        merchantTagId = null;
+        merchant = "";
+        merchants = new ArrayList<>();
         projectId = "0";
         photos.clear();
         accounts = new ArrayList<>();
@@ -963,16 +950,17 @@ public class TransactionEditActivity extends BaseActivity {
     private void chooseMerchant() {
         List<ChoiceSheet.Choice> choices = new ArrayList<>();
         ChoiceSheet.Choice none = ChoiceSheet.Choice.symbol("", getString(R.string.no_merchant), "–");
-        none.selected = merchantTagId == null;
+        none.selected = merchant.isEmpty();
         choices.add(none);
+        List<String> names = new ArrayList<>(merchants);
 
-        for (Models.Tag tag : tags) {
-            if (merchantGroupId == null || !merchantGroupId.equals(tag.groupId) || (tag.hidden && !tag.id.equals(merchantTagId))) {
-                continue;
-            }
+        if (!merchant.isEmpty() && !names.contains(merchant)) {
+            names.add(0, merchant);
+        }
 
-            ChoiceSheet.Choice choice = ChoiceSheet.Choice.item(tag.id, tag.name, null, null);
-            choice.selected = tag.id.equals(merchantTagId);
+        for (String name : names) {
+            ChoiceSheet.Choice choice = ChoiceSheet.Choice.item("=" + name, name, null, null);
+            choice.selected = name.equals(merchant);
             choices.add(choice);
         }
 
@@ -982,7 +970,7 @@ public class TransactionEditActivity extends BaseActivity {
             if ("+".equals(choice.id)) {
                 addMerchant();
             } else {
-                merchantTagId = choice.id.isEmpty() ? null : choice.id;
+                merchant = choice.id.isEmpty() ? "" : choice.id.substring(1);
                 renderAll();
             }
         });
@@ -993,8 +981,11 @@ public class TransactionEditActivity extends BaseActivity {
         TextInputLayout layout = new TextInputLayout(this);
         layout.setHint(getString(R.string.merchant_name));
         layout.setPadding(padding, padding / 2, padding, 0);
+        layout.setCounterEnabled(true);
+        layout.setCounterMaxLength(MAX_MERCHANT_LENGTH);
         TextInputEditText input = new TextInputEditText(layout.getContext());
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(MAX_MERCHANT_LENGTH) });
         input.setSingleLine(true);
         layout.addView(input);
         input.requestFocus();
@@ -1006,93 +997,31 @@ public class TransactionEditActivity extends BaseActivity {
             .setPositiveButton(R.string.add, (dialog, which) -> {
                 String name = input.getText() == null ? "" : input.getText().toString().trim();
 
-                if (!name.isEmpty()) {
-                    createMerchant(name);
+                if (name.isEmpty()) {
+                    return;
                 }
+
+                // reuse the spelling already in use, so one shop doesn't show up twice in reports
+                for (String existing : merchants) {
+                    if (existing.equalsIgnoreCase(name)) {
+                        name = existing;
+                        break;
+                    }
+                }
+
+                merchant = name;
+                renderAll();
             })
             .show()
             .getWindow()
             .setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
     }
 
-    /** Merchants are tags in a "Merchants" tag group, so reports can already filter by them. */
-    private void createMerchant(String name) {
-        for (Models.Tag tag : tags) {
-            if (merchantGroupId != null && merchantGroupId.equals(tag.groupId) && tag.name.equalsIgnoreCase(name)) {
-                merchantTagId = tag.id;
-                renderAll();
-                return;
-            }
-        }
-
-        setBusy(true);
-
-        if (merchantGroupId == null) {
-            JSONObject body = new JSONObject();
-
-            try {
-                body.put("name", getString(R.string.merchants_tag_group));
-            } catch (JSONException ex) {
-                return;
-            }
-
-            api().post("v1/transaction/tags/groups/add.json", body, result -> Models.TagGroup.parse((JSONObject) result), new Api.Callback<Models.TagGroup>() {
-                @Override
-                public void onSuccess(Models.TagGroup result) {
-                    merchantGroupId = result.id;
-                    createMerchantTag(name);
-                }
-
-                @Override
-                public void onError(ApiException error) {
-                    setBusy(false);
-                    showMessage(error.getMessage());
-                }
-            });
-        } else {
-            createMerchantTag(name);
-        }
-    }
-
-    private void createMerchantTag(String name) {
-        JSONObject body = new JSONObject();
-
-        try {
-            body.put("groupId", merchantGroupId);
-            body.put("name", name);
-        } catch (JSONException ex) {
-            return;
-        }
-
-        api().post("v1/transaction/tags/add.json", body, result -> Models.Tag.parse((JSONObject) result), new Api.Callback<Models.Tag>() {
-            @Override
-            public void onSuccess(Models.Tag result) {
-                setBusy(false);
-
-                if (TextUtils.isEmpty(result.groupId) || "0".equals(result.groupId)) {
-                    result.groupId = merchantGroupId;
-                }
-
-                tags.add(result);
-                merchantTagId = result.id;
-                renderAll();
-            }
-
-            @Override
-            public void onError(ApiException error) {
-                setBusy(false);
-                showMessage(error.getMessage());
-            }
-        });
-    }
-
     private void chooseTags() {
         List<Models.Tag> visible = new ArrayList<>();
 
         for (Models.Tag tag : tags) {
-            boolean merchant = merchantGroupId != null && merchantGroupId.equals(tag.groupId);
-
-            if (!merchant && (!tag.hidden || tagIds.contains(tag.id))) {
+            if (!tag.hidden || tagIds.contains(tag.id)) {
                 visible.add(tag);
             }
         }
@@ -1384,12 +1313,6 @@ public class TransactionEditActivity extends BaseActivity {
             return;
         }
 
-        List<String> allTagIds = new ArrayList<>(tagIds);
-
-        if (merchantTagId != null && !allTagIds.contains(merchantTagId)) {
-            allTagIds.add(merchantTagId);
-        }
-
         List<String> pictureIds = new ArrayList<>();
 
         for (Photo photo : photos) {
@@ -1416,9 +1339,13 @@ public class TransactionEditActivity extends BaseActivity {
             body.put("sourceAmount", amount);
             body.put("destinationAmount", type == Models.TRANSACTION_TRANSFER ? destinationAmount : 0);
             body.put("hideAmount", original != null && original.hideAmount);
-            body.put("tagIds", new JSONArray(allTagIds));
+            body.put("tagIds", new JSONArray(tagIds));
             body.put("pictureIds", new JSONArray(pictureIds));
             body.put("projectId", projectId == null ? "0" : projectId);
+
+            if (merchantsSupported || !merchant.isEmpty()) {
+                body.put("merchant", merchant);
+            }
             body.put("comment", commentInput.getText() == null ? "" : commentInput.getText().toString().trim());
 
             if (original != null && original.geoLocation != null) {

@@ -236,34 +236,6 @@ public final class Models {
         }
     }
 
-    /** A named group of tags, such as the "Merchants" group the app uses for merchants. */
-    public static final class TagGroup {
-        public String id;
-        public String name;
-
-        public static TagGroup parse(JSONObject json) {
-            TagGroup group = new TagGroup();
-            group.id = json.optString("id");
-            group.name = json.optString("name");
-            return group;
-        }
-
-        public static List<TagGroup> parseList(Object result) {
-            List<TagGroup> list = new ArrayList<>();
-            JSONArray array = result instanceof JSONArray ? (JSONArray) result : new JSONArray();
-
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject json = array.optJSONObject(i);
-
-                if (json != null) {
-                    list.add(parse(json));
-                }
-            }
-
-            return list;
-        }
-    }
-
     public static final class Project {
         public String id;
         public String name;
@@ -358,6 +330,7 @@ public final class Models {
         public final List<String> pictureIds = new ArrayList<>();
         public final List<String> pictureUrls = new ArrayList<>();
         public String projectId;
+        public String merchant;
 
         public static Transaction parse(JSONObject json) {
             Transaction transaction = new Transaction();
@@ -376,6 +349,7 @@ public final class Models {
             transaction.editable = json.optBoolean("editable", true);
             transaction.geoLocation = json.optJSONObject("geoLocation");
             transaction.projectId = json.optString("projectId", "0");
+            transaction.merchant = json.optString("merchant", "");
 
             JSONObject category = json.optJSONObject("category");
 
