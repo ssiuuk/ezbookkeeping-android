@@ -233,13 +233,29 @@ public class ScreenshotTest {
     }
 
     private UiObject2 find(BySelector selector) {
-        UiObject2 object = device.wait(Until.findObject(selector), TIMEOUT);
+        long deadline = System.currentTimeMillis() + TIMEOUT;
 
-        if (object == null) {
-            throw new AssertionError("Not found on screen: " + selector);
+        while (System.currentTimeMillis() < deadline) {
+            UiObject2 object = device.wait(Until.findObject(selector), 2000);
+
+            if (object != null) {
+                return object;
+            }
+
+            dismissSystemDialogs();
         }
 
-        return object;
+        throw new AssertionError("Not found on screen: " + selector);
+    }
+
+    /** A freshly booted emulator sometimes shows "Pixel Launcher isn't responding" over the app; keep waiting. */
+    private void dismissSystemDialogs() {
+        UiObject2 wait = device.findObject(By.res("android", "aerr_wait"));
+
+        if (wait != null) {
+            wait.click();
+            device.waitForIdle();
+        }
     }
 
     // Pressing back with no keyboard showing would leave the screen, so only press it when one is up.
