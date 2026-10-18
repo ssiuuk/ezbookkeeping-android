@@ -191,7 +191,8 @@ public class ScreenshotTest {
             device.pressBack();
 
             find(By.res(packageName, "nav_overview")).click();
-            find(By.textContains("Weekly shop"));
+            // the purchases saved above are now the latest transactions
+            find(By.textContains("Lunch"));
             settle();
             shot("19-overview-dark");
         } catch (Throwable error) {
