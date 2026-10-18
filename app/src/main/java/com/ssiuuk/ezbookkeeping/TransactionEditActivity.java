@@ -47,6 +47,7 @@ import com.ssiuuk.ezbookkeeping.data.Api;
 import com.ssiuuk.ezbookkeeping.data.ApiException;
 import com.ssiuuk.ezbookkeeping.data.Formats;
 import com.ssiuuk.ezbookkeeping.data.Models;
+import com.ssiuuk.ezbookkeeping.data.PendingPayments;
 import com.ssiuuk.ezbookkeeping.data.RecentChoices;
 import com.ssiuuk.ezbookkeeping.data.Server;
 import com.ssiuuk.ezbookkeeping.data.ServerStore;
@@ -71,6 +72,9 @@ import java.util.concurrent.Executors;
 public class TransactionEditActivity extends BaseActivity {
     private static final String EXTRA_TRANSACTION_ID = "transaction_id";
     private static final String EXTRA_ACCOUNT_ID = "account_id";
+    private static final String EXTRA_PENDING_ID = "pending_id";
+    private static final int MENU_DELETE = 1;
+    private static final int MENU_DISMISS = 2;
     private static final int MAX_PHOTO_SIZE = 2048;
     private static final int MAX_MERCHANT_LENGTH = 64;
     private static final ExecutorService PHOTO_WORKER = Executors.newSingleThreadExecutor();
@@ -109,6 +113,7 @@ public class TransactionEditActivity extends BaseActivity {
     private boolean destinationChosen;
     private final List<String> tagIds = new ArrayList<>();
     private String merchant = "";
+    private PendingPayments.Item pending;
     private String projectId = "0";
     private final List<Photo> photos = new ArrayList<>();
     private final Calendar time = Calendar.getInstance();
@@ -152,6 +157,11 @@ public class TransactionEditActivity extends BaseActivity {
         return new Intent(context, TransactionEditActivity.class).putExtra(EXTRA_ACCOUNT_ID, accountId);
     }
 
+    /** Opens a purchase picked up from Wallet, filled in and ready to save. */
+    public static Intent reviewIntent(Context context, String pendingId) {
+        return new Intent(context, TransactionEditActivity.class).putExtra(EXTRA_PENDING_ID, pendingId);
+    }
+
     public static Intent editIntent(Context context, String transactionId) {
         return new Intent(context, TransactionEditActivity.class).putExtra(EXTRA_TRANSACTION_ID, transactionId);
     }
@@ -178,10 +188,22 @@ public class TransactionEditActivity extends BaseActivity {
         }
 
         transactionId = getIntent().getStringExtra(EXTRA_TRANSACTION_ID);
+        String pendingId = getIntent().getStringExtra(EXTRA_PENDING_ID);
+
+        if (pendingId != null) {
+            pending = PendingPayments.get(this, pendingId);
+
+            if (pending == null) {
+                // already saved or dismissed
+                finish();
+                return;
+            }
+        }
+
         bookId = server.bookId;
         recent = new RecentChoices(this, server, bookId);
         setContentView(R.layout.activity_transaction_edit);
-        setupToolbar(transactionId == null ? R.string.add_transaction : R.string.edit_transaction, true).setNavigationIcon(R.drawable.ic_close);
+        setupToolbar(pending != null ? R.string.review_purchase : transactionId == null ? R.string.add_transaction : R.string.edit_transaction, true).setNavigationIcon(R.drawable.ic_close);
         padForSystemBars(findViewById(R.id.scroll), false, true);
 
         bookLayout = findViewById(R.id.book_layout);
@@ -270,11 +292,15 @@ public class TransactionEditActivity extends BaseActivity {
             }
         });
 
+        if (pending != null) {
+            fillFromPending();
+        }
+
         loadBooks();
         loadServerFeatures();
         loadBookData();
 
-        if (transactionId == null) {
+        if (transactionId == null && pending == null) {
             amountInput.requestFocus();
             amountInput.postDelayed(() -> {
                 InputMethodManager keyboard = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
@@ -291,9 +317,13 @@ public class TransactionEditActivity extends BaseActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         if (transactionId != null) {
-            MenuItem delete = menu.add(0, 1, 0, R.string.delete);
+            MenuItem delete = menu.add(0, MENU_DELETE, 0, R.string.delete);
             delete.setIcon(R.drawable.ic_delete);
             delete.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        } else if (pending != null) {
+            MenuItem dismiss = menu.add(0, MENU_DISMISS, 0, R.string.dismiss_purchase);
+            dismiss.setIcon(R.drawable.ic_delete);
+            dismiss.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
         }
 
         return true;
@@ -301,8 +331,13 @@ public class TransactionEditActivity extends BaseActivity {
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == 1) {
+        if (item.getItemId() == MENU_DELETE) {
             confirmDelete();
+            return true;
+        } else if (item.getItemId() == MENU_DISMISS) {
+            PendingPayments.remove(this, pending.id);
+            Ui.dataChanged();
+            finish();
             return true;
         }
 
@@ -494,8 +529,16 @@ public class TransactionEditActivity extends BaseActivity {
             account = findAccount(accountId);
             accountChosen = account != null;
 
+            if (pending != null) {
+                applyPendingChoices();
+            }
+
             if (account == null) {
                 applyRememberedAccounts(null);
+
+                if (category != null) {
+                    applyRememberedAccounts(category.id);
+                }
             }
         }
 
@@ -554,6 +597,53 @@ public class TransactionEditActivity extends BaseActivity {
             photo.url = i < original.pictureUrls.size() ? original.pictureUrls.get(i) : null;
             photos.add(photo);
             loadThumbnail(photo);
+        }
+    }
+
+    private void fillFromPending() {
+        type = pending.refund ? Models.TRANSACTION_INCOME : Models.TRANSACTION_EXPENSE;
+        typeGroup.check(pending.refund ? R.id.type_income : R.id.type_expense);
+        amountInput.setText(Formats.editableAmount(pending.amount));
+        time.setTimeInMillis(pending.time);
+        merchant = pending.merchant;
+        String paid = pending.card.isEmpty() ? getString(R.string.google_wallet) : pending.card;
+        amountLayout.setHelperText(pending.currency.isEmpty() ? paid : getString(R.string.paid_in_currency, paid, Formats.amount(pending.amount, pending.currency)));
+    }
+
+    /** The category used last time at this shop, and the account this card belongs to. */
+    private void applyPendingChoices() {
+        if (category == null) {
+            String categoryId = recent.categoryForMerchant(pending.merchant);
+
+            for (Models.Category parent : categoriesOfType()) {
+                for (Models.Category sub : parent.subCategories) {
+                    if (sub.id.equals(categoryId) && !sub.hidden) {
+                        category = sub;
+                    }
+                }
+            }
+        }
+
+        if (accountChosen) {
+            return;
+        }
+
+        Models.Account card = findAccount(recent.accountForCard(pending.cardKey));
+
+        // an account named or noted with the card's last four digits, like "Visa 1234"
+        if (card == null && pending.cardKey.matches("\\d{4}")) {
+            for (Models.Account candidate : accounts) {
+                if ((candidate.name != null && candidate.name.contains(pending.cardKey))
+                    || (candidate.comment != null && candidate.comment.contains(pending.cardKey))) {
+                    card = candidate;
+                    break;
+                }
+            }
+        }
+
+        if (card != null) {
+            account = card;
+            accountChosen = true;
         }
     }
 
@@ -820,7 +910,7 @@ public class TransactionEditActivity extends BaseActivity {
         accountChosen = false;
         destinationChosen = false;
         tagIds.clear();
-        merchant = "";
+        merchant = pending != null ? pending.merchant : "";
         merchants = new ArrayList<>();
         projectId = "0";
         photos.clear();
@@ -1359,6 +1449,7 @@ public class TransactionEditActivity extends BaseActivity {
         setBusy(true);
         String savedCategoryId = category.id;
         String savedAccountId = account.id;
+        String savedMerchant = merchant;
         String savedDestinationId = type == Models.TRANSACTION_TRANSFER ? destinationAccount.id : null;
         int savedType = type;
 
@@ -1366,6 +1457,12 @@ public class TransactionEditActivity extends BaseActivity {
             @Override
             public void onSuccess(Object result) {
                 recent.remember(savedType, savedCategoryId, savedAccountId, savedDestinationId);
+                recent.rememberMerchant(savedMerchant, savedCategoryId);
+
+                if (pending != null) {
+                    recent.rememberCard(pending.cardKey, savedAccountId);
+                    PendingPayments.remove(TransactionEditActivity.this, pending.id);
+                }
                 Ui.dataChanged();
                 finish();
             }

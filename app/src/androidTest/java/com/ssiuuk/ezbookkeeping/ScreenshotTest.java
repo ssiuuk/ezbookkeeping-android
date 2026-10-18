@@ -13,6 +13,9 @@ import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.Until;
 
+import com.ssiuuk.ezbookkeeping.data.PaymentNotification;
+import com.ssiuuk.ezbookkeeping.data.PendingPayments;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -137,9 +140,29 @@ public class ScreenshotTest {
             find(By.res(packageName, "account").text("Credit card"));
             settle();
             shot("13-remembered-account");
-            backTo(By.res(packageName, "action_settings")).click();
+
+            // a Google Wallet purchase waits under To review, with the shop's last category and that category's account
+            PendingPayments.add(context, PaymentNotification.parse("Corner Café", "$18.20 with Visa •••• 1234"), System.currentTimeMillis(), "test");
+            backTo(By.res(packageName, "review_card"));
+            find(By.text("1 purchase to review"));
+            settle();
+            shot("14-to-review");
+            find(By.res(packageName, "review_list")).findObject(By.text("Corner Café")).click();
+            find(By.res(packageName, "category").text("Restaurants"));
+            find(By.res(packageName, "account").text("Credit card"));
+            find(By.res(packageName, "amount").text("18.20"));
+            settle();
+            shot("15-review-purchase");
+            scrollTo(By.res(packageName, "merchant").text("Corner Café"));
+            scrollTo(By.res(packageName, "save_button")).click();
+
+            if (!device.wait(Until.gone(By.res(packageName, "review_card")), TIMEOUT)) {
+                throw new AssertionError("The saved purchase is still waiting for review");
+            }
+
+            find(By.res(packageName, "action_settings")).click();
             find(By.text("Theme"));
-            shot("14-settings");
+            shot("16-settings");
             device.pressBack();
 
             find(By.res(packageName, "nav_more")).click();
@@ -148,7 +171,7 @@ public class ScreenshotTest {
             // the web app is a large bundle, so give it time to start and draw the report
             device.wait(Until.hasObject(By.pkg(packageName).textContains("Expense")), TIMEOUT);
             Thread.sleep(3000);
-            shot("15-web-reports");
+            shot("17-web-reports");
 
             for (int i = 0; i < 3 && !device.hasObject(By.res(packageName, "bottom_nav")); i++) {
                 device.pressBack();
@@ -162,13 +185,13 @@ public class ScreenshotTest {
             find(By.text("Dark")).click();
             find(By.text("Theme"));
             settle();
-            shot("16-settings-dark");
+            shot("18-settings-dark");
             device.pressBack();
 
             find(By.res(packageName, "nav_overview")).click();
             find(By.textContains("Weekly shop"));
             settle();
-            shot("17-overview-dark");
+            shot("19-overview-dark");
         } catch (Throwable error) {
             shot("99-failure");
             device.dumpWindowHierarchy(new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalCacheDir(), "hierarchy.xml"));

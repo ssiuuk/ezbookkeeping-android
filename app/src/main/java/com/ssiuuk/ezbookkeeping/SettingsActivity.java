@@ -1,10 +1,14 @@
 package com.ssiuuk.ezbookkeeping;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
@@ -19,7 +23,7 @@ import com.ssiuuk.ezbookkeeping.data.ApiException;
 import com.ssiuuk.ezbookkeeping.data.Server;
 import com.ssiuuk.ezbookkeeping.data.ServerStore;
 
-/** App settings: which server to use, sign-out, theme and version. */
+/** App settings: which server to use, sign-out, Wallet purchases, theme and version. */
 public class SettingsActivity extends BaseActivity {
     private LinearLayout container;
 
@@ -58,8 +62,39 @@ public class SettingsActivity extends BaseActivity {
             view -> startActivity(new Intent(this, ServersActivity.class)));
 
         addHeader(R.string.section_app);
+        boolean capturing = PaymentListenerService.hasAccess(this);
+        addItem(R.drawable.ic_wallet, getString(R.string.payment_capture), getString(capturing ? R.string.payment_capture_on : R.string.payment_capture_off),
+            view -> explainPaymentCapture(capturing));
         addItem(R.drawable.ic_dark_mode, getString(R.string.theme), themeName(store.getThemeMode()), view -> chooseTheme());
         addItem(R.drawable.ic_info, getString(R.string.about), getString(R.string.version, versionName()), null);
+    }
+
+    /** Purchases are read from Wallet's notifications, which needs notification access from Android's settings. */
+    private void explainPaymentCapture(boolean capturing) {
+        new MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.payment_capture)
+            .setMessage(capturing ? R.string.payment_capture_turn_off_message : R.string.payment_capture_message)
+            .setNegativeButton(R.string.cancel, null)
+            .setNeutralButton(R.string.app_info, (dialog, which) -> startActivity(
+                new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", getPackageName(), null))))
+            .setPositiveButton(R.string.open_settings, (dialog, which) -> openNotificationAccess())
+            .show();
+    }
+
+    private void openNotificationAccess() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Intent detail = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, PaymentListenerService.component(this).flattenToString());
+
+            try {
+                startActivity(detail);
+                return;
+            } catch (ActivityNotFoundException ex) {
+                // some phones only have the list of all apps
+            }
+        }
+
+        startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
     }
 
     private void chooseTheme() {

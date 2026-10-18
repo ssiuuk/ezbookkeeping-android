@@ -46,6 +46,7 @@ public final class Models {
         public boolean isAsset;
         public boolean isLiability;
         public String sharedBy;
+        public String comment;
         public final List<Account> subAccounts = new ArrayList<>();
 
         public static Account parse(JSONObject json) {
@@ -62,6 +63,7 @@ public final class Models {
             account.isAsset = json.optBoolean("isAsset");
             account.isLiability = json.optBoolean("isLiability");
             account.sharedBy = json.optString("sharedBy", "");
+            account.comment = json.optString("comment", "");
 
             JSONArray subAccounts = json.optJSONArray("subAccounts");
 

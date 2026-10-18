@@ -18,6 +18,7 @@ import com.ssiuuk.ezbookkeeping.data.Api;
 import com.ssiuuk.ezbookkeeping.data.ApiException;
 import com.ssiuuk.ezbookkeeping.data.Formats;
 import com.ssiuuk.ezbookkeeping.data.Models;
+import com.ssiuuk.ezbookkeeping.data.PendingPayments;
 import com.ssiuuk.ezbookkeeping.data.Server;
 import com.ssiuuk.ezbookkeeping.data.ServerStore;
 
@@ -42,6 +43,9 @@ public class OverviewFragment extends Fragment implements Reloadable {
     private TextView netAssets;
     private TextView assetsDetail;
     private LinearLayout recentList;
+    private View reviewCard;
+    private TextView reviewTitle;
+    private LinearLayout reviewList;
 
     private Map<String, Models.PeriodAmounts> amounts;
     private List<Models.Account> accounts;
@@ -62,6 +66,9 @@ public class OverviewFragment extends Fragment implements Reloadable {
         netAssets = view.findViewById(R.id.net_assets);
         assetsDetail = view.findViewById(R.id.assets_detail);
         recentList = view.findViewById(R.id.recent_list);
+        reviewCard = view.findViewById(R.id.review_card);
+        reviewTitle = view.findViewById(R.id.review_title);
+        reviewList = view.findViewById(R.id.review_list);
 
         refresh.setOnRefreshListener(this::load);
         view.findViewById(R.id.see_all).setOnClickListener(v -> ((MainActivity) requireActivity()).showTab(R.id.nav_transactions));
@@ -80,6 +87,55 @@ public class OverviewFragment extends Fragment implements Reloadable {
         if (loadedVersion != Ui.dataVersion && isAdded()) {
             load();
         }
+
+        if (isAdded()) {
+            renderReview();
+        }
+    }
+
+    /** Purchases picked up from Wallet, waiting to be saved; tapping one opens it in the add screen. */
+    private void renderReview() {
+        Server server = ServerStore.get(requireContext()).getActiveServer();
+        List<PendingPayments.Item> items = PendingPayments.list(requireContext());
+        reviewCard.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
+        reviewList.removeAllViews();
+
+        if (items.isEmpty()) {
+            return;
+        }
+
+        reviewTitle.setText(getResources().getQuantityString(R.plurals.to_review_count, items.size(), items.size()));
+        LayoutInflater inflater = LayoutInflater.from(requireContext());
+        String defaultCurrency = server == null ? null : server.getDefaultCurrency();
+
+        for (PendingPayments.Item item : items) {
+            View row = inflater.inflate(R.layout.item_transaction, reviewList, false);
+            String title = item.merchant.isEmpty() ? getString(R.string.unknown_merchant) : item.merchant;
+            Ui.bindAvatar(row.findViewById(R.id.avatar), title, null);
+            ((TextView) row.findViewById(R.id.title)).setText(title);
+            ((TextView) row.findViewById(R.id.subtitle)).setText(item.card.isEmpty() ? getString(R.string.google_wallet) : item.card);
+            TextView amount = row.findViewById(R.id.amount);
+            amount.setText(Formats.signedAmount(item.amount, item.currency.isEmpty() ? defaultCurrency : item.currency, !item.refund));
+            amount.setTextColor(Ui.amountColor(requireContext(), item.refund ? Models.TRANSACTION_INCOME : Models.TRANSACTION_EXPENSE));
+            ((TextView) row.findViewById(R.id.meta)).setText(Formats.dayHeader(requireContext(), item.time / 1000) + " " + Formats.time(requireContext(), item.time));
+            row.setOnClickListener(v -> startActivity(TransactionEditActivity.reviewIntent(requireContext(), item.id)));
+            row.setOnLongClickListener(v -> {
+                dismiss(item);
+                return true;
+            });
+            reviewList.addView(row);
+        }
+    }
+
+    private void dismiss(PendingPayments.Item item) {
+        PendingPayments.remove(requireContext(), item.id);
+        renderReview();
+        Snackbar.make(refresh, R.string.purchase_dismissed, Snackbar.LENGTH_LONG).setAction(R.string.undo, v -> {
+            if (isAdded()) {
+                PendingPayments.restore(requireContext(), item);
+                renderReview();
+            }
+        }).show();
     }
 
     private void load() {

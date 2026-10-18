@@ -4,4 +4,8 @@
         <item quantity="one">%1$d server</item>
         <item quantity="other">%1$d servers</item>
     </plurals>
+    <plurals name="to_review_count">
+        <item quantity="one">%d purchase to review</item>
+        <item quantity="other">%d purchases to review</item>
+    </plurals>
 </resources>

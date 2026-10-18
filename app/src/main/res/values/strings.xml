@@ -180,4 +180,20 @@
     <string name="book_change_title">Move to another book?</string>
     <string name="book_change_message">Category, accounts, tags, project and photos belong to each book, so they will be cleared.</string>
     <string name="change">Change</string>
+    <string name="payment_capture_service">Google Wallet purchases</string>
+    <string name="payment_capture">Google Wallet purchases</string>
+    <string name="payment_capture_on">On · new purchases wait in To review</string>
+    <string name="payment_capture_off">Off</string>
+    <string name="payment_capture_message">After you pay with your phone, Google Wallet shows a notification with the shop, amount and card. With notification access, this app reads those notifications and lists each purchase under To review on the Overview, ready to save with one tap. Other apps\' notifications are ignored, and nothing is saved until you confirm it.\n\nTap Open settings and allow access for ezBookkeeping. If Android says the setting is restricted, tap App info, open the ⋮ menu, choose Allow restricted settings, and try again.</string>
+    <string name="payment_capture_turn_off_message">This app is reading Google Wallet\'s purchase notifications. To stop, tap Open settings and turn off access for ezBookkeeping.</string>
+    <string name="app_info">App info</string>
+    <string name="open_settings">Open settings</string>
+    <string name="to_review_hint">From Google Wallet. Tap to check and save, or touch and hold to dismiss.</string>
+    <string name="unknown_merchant">Purchase</string>
+    <string name="google_wallet">Google Wallet</string>
+    <string name="purchase_dismissed">Purchase dismissed</string>
+    <string name="review_purchase">Review purchase</string>
+    <string name="dismiss_purchase">Dismiss</string>
+    <string name="paid_in_currency">%1$s · paid %2$s</string>
+    <string name="undo">Undo</string>
 </resources>
