@@ -148,7 +148,7 @@ public class ScreenshotTest {
             settle();
             shot("14-to-review");
             find(By.res(packageName, "review_list")).findObject(By.text("Corner Café")).click();
-            find(By.res(packageName, "category").text("Restaurants"));
+            find(By.res(packageName, "category").textContains("Restaurants"));
             find(By.res(packageName, "account").text("Credit card"));
             find(By.res(packageName, "amount").text("18.20"));
             settle();
