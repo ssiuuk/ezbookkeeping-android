@@ -48,14 +48,14 @@ public class ScreenshotTest {
             shot("01-welcome");
             find(By.res(packageName, "server_address")).setText(serverUrl);
             find(By.res(packageName, "server_name")).setText("Home");
-            device.pressBack();
+            hideKeyboard();
             find(By.res(packageName, "connect_button")).click();
 
             find(By.res(packageName, "login_name"));
             shot("02-sign-in");
             find(By.res(packageName, "login_name")).setText("demo");
             find(By.res(packageName, "password")).setText("demo123456");
-            device.pressBack();
+            hideKeyboard();
             find(By.res(packageName, "sign_in_button")).click();
 
             find(By.res(packageName, "bottom_nav"));
@@ -80,19 +80,19 @@ public class ScreenshotTest {
             find(By.res(packageName, "nav_overview")).click();
             find(By.res(packageName, "fab")).click();
             find(By.res(packageName, "amount"));
-            device.pressBack();
+            hideKeyboard();
             settle();
             shot("07-add-transaction");
 
             find(By.res(packageName, "amount")).setText("12.50");
-            device.pressBack();
+            hideKeyboard();
             find(By.res(packageName, "category")).click();
             find(By.text("Restaurants"));
             settle();
             shot("08-choose-category");
             find(By.text("Restaurants")).click();
             find(By.res(packageName, "comment")).setText("Lunch");
-            device.pressBack();
+            hideKeyboard();
             settle();
             shot("09-filled-transaction");
             find(By.res(packageName, "save_button")).click();
@@ -142,6 +142,21 @@ public class ScreenshotTest {
         }
 
         return object;
+    }
+
+    // Pressing back with no keyboard showing would leave the screen, so only press it when one is up.
+    private void hideKeyboard() throws IOException, InterruptedException {
+        device.waitForIdle();
+        String state = device.executeShellCommand("dumpsys input_method");
+
+        boolean shown = state.contains("mInputShown=true")
+                || state.contains("isInputViewShown=true")
+                || device.hasObject(By.pkg("com.google.android.inputmethod.latin"));
+
+        if (shown) {
+            device.pressBack();
+            device.waitForIdle();
+        }
     }
 
     private void settle() throws InterruptedException {
