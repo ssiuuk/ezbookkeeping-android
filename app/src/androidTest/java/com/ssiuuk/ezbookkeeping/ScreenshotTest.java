@@ -173,7 +173,9 @@ public class ScreenshotTest {
             Thread.sleep(3000);
             shot("17-web-reports");
 
-            for (int i = 0; i < 3 && !device.hasObject(By.res(packageName, "bottom_nav")); i++) {
+            for (int i = 0; i < 5 && !device.hasObject(By.res(packageName, "bottom_nav")); i++) {
+                // a system "isn't responding" dialog would swallow the back press
+                dismissSystemDialogs();
                 device.pressBack();
                 device.waitForIdle();
                 Thread.sleep(1000);
@@ -203,6 +205,7 @@ public class ScreenshotTest {
     /** Presses back until the selector shows, since the first press may only close the keyboard. */
     private UiObject2 backTo(BySelector selector) {
         for (int i = 0; i < 3; i++) {
+            dismissSystemDialogs();
             device.pressBack();
             UiObject2 found = device.wait(Until.findObject(selector), 3000);
 
