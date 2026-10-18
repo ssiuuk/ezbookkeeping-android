@@ -69,4 +69,11 @@ tx 3 "Fuel" "$CARD" 6150 6 ""
 tx 3 "Rent" "$BANK" 95000 7 "Rent"
 tx 3 "Groceries" "$CASH" 1830 8 "Market"
 
+# this fork's server also has projects and family books; the stock server answers 404 for both
+if api POST v1/projects/add.json '{"name":"Holiday","comment":""}' > /dev/null 2>&1; then
+  api POST v1/projects/add.json '{"name":"Home renovation","comment":""}' > /dev/null
+  api POST v1/books/add.json '{"name":"Family"}' > /dev/null
+  echo "Added projects and a family book"
+fi
+
 echo "Seeded $SERVER with user $USERNAME"

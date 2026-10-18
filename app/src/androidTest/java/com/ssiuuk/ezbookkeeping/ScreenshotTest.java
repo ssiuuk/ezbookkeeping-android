@@ -82,6 +82,8 @@ public class ScreenshotTest {
             find(By.res(packageName, "fab")).click();
             find(By.res(packageName, "amount"));
             hideKeyboard();
+            // the test server has a shared "Family" book, so the book field is offered
+            find(By.res(packageName, "book"));
             settle();
             shot("07-add-transaction");
 
@@ -98,6 +100,10 @@ public class ScreenshotTest {
             settle();
             shot("09-choose-account");
             find(By.text("Credit card")).click();
+
+            scrollTo(By.res(packageName, "project")).click();
+            find(By.text("Holiday")).click();
+            find(By.res(packageName, "project").text("Holiday"));
 
             scrollTo(By.res(packageName, "merchant")).click();
             find(By.text("Add a merchant")).click();
@@ -117,6 +123,7 @@ public class ScreenshotTest {
 
             find(By.textContains("Lunch")).click();
             find(By.res(packageName, "merchant").text("Corner Café"));
+            scrollTo(By.res(packageName, "project").text("Holiday"));
             settle();
             shot("12-edit-transaction");
             device.pressBack();
