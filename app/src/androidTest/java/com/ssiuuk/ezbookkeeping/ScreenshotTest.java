@@ -130,6 +130,8 @@ public class ScreenshotTest {
             scrollTo(By.res(packageName, "project").text("Holiday"));
             settle();
             shot("12-edit-transaction");
+            // a saved transaction can be moved to the family book
+            scrollTo(By.res(packageName, "book"));
             device.pressBack();
 
             // a new expense in the same category starts with the account used last time
@@ -141,6 +143,14 @@ public class ScreenshotTest {
             find(By.res(packageName, "account").text("Credit card"));
             settle();
             shot("13-remembered-account");
+
+            // a new category can be added to a group straight from the category list
+            find(By.res(packageName, "category")).click();
+            scrollSheetTo("Choose a category", By.text("Add a category")).click();
+            find(By.text("Food")).click();
+            type(By.clazz("android.widget.EditText").focused(true), "Bakery");
+            find(By.text("Add")).click();
+            find(By.res(packageName, "category").textContains("Bakery"));
 
             // a Google Wallet purchase waits under To review, with the shop's last category and that category's account
             PendingPayments.add(context, PaymentNotification.parse("Corner Café", "$18.20 with Visa •••• 1234"), System.currentTimeMillis(), "test");
@@ -220,6 +230,24 @@ public class ScreenshotTest {
     }
 
     /** Scrolls the form until the field is on screen, since the add screen is taller than the phone. */
+    /** Scrolls the list in the choice sheet with the given title until the selector shows. */
+    private UiObject2 scrollSheetTo(String title, BySelector selector) {
+        UiObject2 sheet = find(By.scrollable(true).hasDescendant(By.text(title)));
+        UiObject2 found = device.findObject(selector);
+
+        for (int i = 0; i < 6 && (found == null || found.getVisibleBounds().height() < 20); i++) {
+            sheet.scroll(Direction.DOWN, 0.6f);
+            device.waitForIdle();
+            found = device.findObject(selector);
+        }
+
+        if (found == null) {
+            throw new AssertionError("Not found in the sheet: " + selector);
+        }
+
+        return found;
+    }
+
     private UiObject2 scrollTo(BySelector selector) {
         UiObject2 scroll = find(By.res(packageName, "scroll"));
         UiObject2 found = device.findObject(selector);
