@@ -199,7 +199,7 @@ public class ScreenshotTest {
             find(By.text("Theme"));
             settle();
             shot("18-settings-dark");
-            device.pressBack();
+            backTo(By.res(packageName, "nav_overview"));
 
             tap(By.res(packageName, "nav_overview"));
             // the purchases saved above are now the latest transactions
@@ -307,6 +307,17 @@ public class ScreenshotTest {
                     throw e;
                 }
                 device.waitForIdle();
+            }
+        }
+    }
+
+    /** Presses back until the selector shows; a back press during the theme change's redraw can be lost. */
+    private void backTo(BySelector selector) {
+        for (int i = 0; i < 3; i++) {
+            device.pressBack();
+
+            if (device.wait(Until.hasObject(selector), 3000)) {
+                return;
             }
         }
     }
