@@ -214,7 +214,8 @@ public class ScreenshotTest {
             find(By.text("Family")).click();
             find(By.text("Change")).click();
             find(By.res(packageName, "category").textContains("Restaurants"));
-            find(By.res(packageName, "account").text("Credit card"));
+            // a shared account shows its owner, as in "Credit card (Alex)"
+            find(By.res(packageName, "account").textStartsWith("Credit card"));
             settle();
             shot("20-move-to-family");
             scrollTo(By.res(packageName, "save_button")).click();
