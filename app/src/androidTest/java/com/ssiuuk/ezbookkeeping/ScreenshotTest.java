@@ -232,10 +232,17 @@ public class ScreenshotTest {
     /** Scrolls the form until the field is on screen, since the add screen is taller than the phone. */
     /** Scrolls the list in the choice sheet with the given title until the selector shows. */
     private UiObject2 scrollSheetTo(String title, BySelector selector) {
-        UiObject2 sheet = find(By.scrollable(true).hasDescendant(By.text(title)));
+        find(By.text(title));
         UiObject2 found = device.findObject(selector);
 
         for (int i = 0; i < 6 && (found == null || found.getVisibleBounds().height() < 20); i++) {
+            // a short list fits on screen and isn't scrollable at all
+            UiObject2 sheet = device.findObject(By.scrollable(true).hasDescendant(By.text(title)));
+
+            if (sheet == null) {
+                break;
+            }
+
             sheet.scroll(Direction.DOWN, 0.6f);
             device.waitForIdle();
             found = device.findObject(selector);
