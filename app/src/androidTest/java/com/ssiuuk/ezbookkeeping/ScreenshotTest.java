@@ -57,7 +57,9 @@ public class ScreenshotTest {
             tap(By.res(packageName, "server_name"));
             device.pressEnter();
 
-            if (!device.wait(Until.hasObject(By.res(packageName, "login_name")), 5000)) {
+            // checking the server can take a while on a fresh emulator; only fall back while the form is still showing
+            if (!device.wait(Until.hasObject(By.res(packageName, "login_name")), 20000)
+                    && device.hasObject(By.res(packageName, "server_address"))) {
                 hideKeyboard();
                 tapBelowKeyboard(By.res(packageName, "connect_button"));
             }
