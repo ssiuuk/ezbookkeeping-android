@@ -1796,14 +1796,14 @@ public class TransactionEditActivity extends BaseActivity {
         String savedDestinationId = type == Models.TRANSACTION_TRANSFER ? destinationAccount.id : null;
         int savedType = type;
 
-        api().post(original == null || moving ? "v1/transactions/add.json" : "v1/transactions/modify.json", body, null, new Api.Callback<Object>() {
+        if (moving) {
+            moveToBook(body);
+            return;
+        }
+
+        api().post(original == null ? "v1/transactions/add.json" : "v1/transactions/modify.json", body, null, new Api.Callback<Object>() {
             @Override
             public void onSuccess(Object result) {
-                if (moving) {
-                    removeFromOriginalBook();
-                    return;
-                }
-
                 recent.remember(savedType, savedCategoryId, savedAccountId, savedDestinationId);
                 recent.rememberMerchant(savedMerchant, savedCategoryId);
 
@@ -1824,7 +1824,57 @@ public class TransactionEditActivity extends BaseActivity {
         });
     }
 
-    /** A transaction moves to another book by being added there and then deleted from its old book. */
+    /** Moves the transaction in one step on servers that can, or by adding it to the new book and deleting the old one. */
+    private void moveToBook(JSONObject body) {
+        JSONObject moveBody;
+
+        try {
+            moveBody = new JSONObject(body.toString());
+            moveBody.put("id", original.id);
+            moveBody.put("sourceBookId", findBook(originalBookId).id);
+        } catch (JSONException | NullPointerException ex) {
+            addThenRemoveFromOriginalBook(body);
+            return;
+        }
+
+        api().post("v1/transactions/move/book.json", moveBody, null, new Api.Callback<Object>() {
+            @Override
+            public void onSuccess(Object result) {
+                Ui.dataChanged();
+                finish();
+            }
+
+            @Override
+            public void onError(ApiException error) {
+                if (error.isNotFound()) {
+                    // servers before the move request answer 404
+                    addThenRemoveFromOriginalBook(body);
+                    return;
+                }
+
+                saving = false;
+                setBusy(false);
+                showMessage(error.getMessage());
+            }
+        });
+    }
+
+    private void addThenRemoveFromOriginalBook(JSONObject body) {
+        api().post("v1/transactions/add.json", body, null, new Api.Callback<Object>() {
+            @Override
+            public void onSuccess(Object result) {
+                removeFromOriginalBook();
+            }
+
+            @Override
+            public void onError(ApiException error) {
+                saving = false;
+                setBusy(false);
+                showMessage(error.getMessage());
+            }
+        });
+    }
+
     private void removeFromOriginalBook() {
         JSONObject body = new JSONObject();
 

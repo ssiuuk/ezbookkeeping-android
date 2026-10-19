@@ -72,7 +72,13 @@ tx 3 "Groceries" "$CASH" 1830 8 "Market"
 # this fork's server also has projects and family books; the stock server answers 404 for both
 if api POST v1/projects/add.json '{"name":"Holiday","comment":""}' > /dev/null 2>&1; then
   api POST v1/projects/add.json '{"name":"Home renovation","comment":""}' > /dev/null
-  api POST v1/books/add.json '{"name":"Family"}' > /dev/null
+  FAMILY=$(api POST v1/books/add.json '{"name":"Family"}' | jq -r '.result.id')
+  family_api() { # path json
+    curl -fsS -X POST "$SERVER/api/$1" -H "Authorization: Bearer $TOKEN" -H "$TZ_HEADER" -H "X-Book-Id: $FAMILY" -H "Content-Type: application/json" -d "$2"
+  }
+  # the family book gets its own Food categories and the credit card, so a transaction can be moved there
+  family_api v1/transaction/categories/add_batch.json "{\"categories\":[$(category "Food" "ff6b22" 2 "Groceries" "Restaurants")]}" > /dev/null
+  family_api v1/books/accounts/share.json "{\"accountId\":\"$CARD\"}" > /dev/null
   echo "Added projects and a family book"
 fi
 

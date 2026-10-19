@@ -206,6 +206,22 @@ public class ScreenshotTest {
             find(By.textContains("Lunch"));
             settle();
             shot("19-overview-dark");
+
+            // move the lunch to the family book, where the category and card have the same names
+            find(By.textContains("Lunch")).click();
+            find(By.res(packageName, "merchant").text("Corner Café"));
+            scrollTo(By.res(packageName, "book")).click();
+            find(By.text("Family")).click();
+            find(By.text("Change")).click();
+            find(By.res(packageName, "category").textContains("Restaurants"));
+            find(By.res(packageName, "account").text("Credit card"));
+            settle();
+            shot("20-move-to-family");
+            scrollTo(By.res(packageName, "save_button")).click();
+
+            if (!device.wait(Until.gone(By.textContains("Lunch")), TIMEOUT)) {
+                throw new AssertionError("The moved transaction is still in my book");
+            }
         } catch (Throwable error) {
             shot("99-failure");
             device.dumpWindowHierarchy(new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalCacheDir(), "hierarchy.xml"));
