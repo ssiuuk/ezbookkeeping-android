@@ -53,8 +53,14 @@ public class ScreenshotTest {
             shot("01-welcome");
             type(By.res(packageName, "server_address"), serverUrl);
             type(By.res(packageName, "server_name"), "Home");
-            hideKeyboard();
-            tapBelowKeyboard(By.res(packageName, "connect_button"));
+            // the keyboard's Go key connects, so the test doesn't depend on the keyboard leaving the button visible
+            tap(By.res(packageName, "server_name"));
+            device.pressEnter();
+
+            if (!device.wait(Until.hasObject(By.res(packageName, "login_name")), 5000)) {
+                hideKeyboard();
+                tapBelowKeyboard(By.res(packageName, "connect_button"));
+            }
 
             find(By.res(packageName, "login_name"));
             shot("02-sign-in");
