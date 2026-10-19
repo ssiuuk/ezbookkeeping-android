@@ -53,37 +53,45 @@ public class ScreenshotTest {
             shot("01-welcome");
             type(By.res(packageName, "server_address"), serverUrl);
             type(By.res(packageName, "server_name"), "Home");
-            hideKeyboard();
-            find(By.res(packageName, "connect_button")).click();
+            // the keyboard's Go key connects, so the test doesn't depend on the keyboard leaving the button visible
+            tap(By.res(packageName, "server_name"));
+            device.pressEnter();
+
+            // checking the server can take a while on a fresh emulator; only fall back while the form is still showing
+            if (!device.wait(Until.hasObject(By.res(packageName, "login_name")), 20000)
+                    && device.hasObject(By.res(packageName, "server_address"))) {
+                hideKeyboard();
+                tapBelowKeyboard(By.res(packageName, "connect_button"));
+            }
 
             find(By.res(packageName, "login_name"));
             shot("02-sign-in");
             type(By.res(packageName, "login_name"), "demo");
             type(By.res(packageName, "password"), "demo123456");
             hideKeyboard();
-            find(By.res(packageName, "sign_in_button")).click();
+            tapBelowKeyboard(By.res(packageName, "sign_in_button"));
 
             find(By.res(packageName, "bottom_nav"));
             find(By.textContains("Weekly shop"));
             settle();
             shot("03-overview");
 
-            find(By.res(packageName, "nav_transactions")).click();
+            tap(By.res(packageName, "nav_transactions"));
             find(By.textContains("Dinner with friends"));
             settle();
             shot("04-transactions");
 
-            find(By.res(packageName, "nav_accounts")).click();
+            tap(By.res(packageName, "nav_accounts"));
             find(By.text("Savings"));
             settle();
             shot("05-accounts");
 
-            find(By.res(packageName, "nav_more")).click();
+            tap(By.res(packageName, "nav_more"));
             find(By.text("Reports"));
             shot("06-more");
 
-            find(By.res(packageName, "nav_overview")).click();
-            find(By.res(packageName, "fab")).click();
+            tap(By.res(packageName, "nav_overview"));
+            tap(By.res(packageName, "fab"));
             find(By.res(packageName, "amount"));
             hideKeyboard();
             // the test server has a shared "Family" book, so the book field is offered
@@ -93,26 +101,26 @@ public class ScreenshotTest {
 
             type(By.res(packageName, "amount"), "12.50");
             hideKeyboard();
-            find(By.res(packageName, "category")).click();
+            tap(By.res(packageName, "category"));
             find(By.text("Restaurants"));
             settle();
             shot("08-choose-category");
-            find(By.text("Restaurants")).click();
+            tap(By.text("Restaurants"));
 
-            find(By.res(packageName, "account")).click();
+            tap(By.res(packageName, "account"));
             find(By.text("Credit cards"));
             settle();
             shot("09-choose-account");
-            find(By.text("Credit card")).click();
+            tap(By.text("Credit card"));
 
             scrollTo(By.res(packageName, "project")).click();
-            find(By.text("Holiday")).click();
+            tap(By.text("Holiday"));
             find(By.res(packageName, "project").text("Holiday"));
 
             scrollTo(By.res(packageName, "merchant")).click();
-            find(By.text("Add a merchant")).click();
+            tap(By.text("Add a merchant"));
             type(By.clazz("android.widget.EditText").focused(true), "Corner Café");
-            find(By.text("Add")).click();
+            tap(By.text("Add"));
             find(By.res(packageName, "merchant").text("Corner Café"));
 
             scrollTo(By.res(packageName, "comment")).setText("Lunch");
@@ -125,22 +133,32 @@ public class ScreenshotTest {
             settle();
             shot("11-overview-after-adding");
 
-            find(By.textContains("Lunch")).click();
+            tap(By.textContains("Lunch"));
             find(By.res(packageName, "merchant").text("Corner Café"));
             scrollTo(By.res(packageName, "project").text("Holiday"));
             settle();
             shot("12-edit-transaction");
+            // a saved transaction can be moved to the family book
+            scrollTo(By.res(packageName, "book"));
             device.pressBack();
 
             // a new expense in the same category starts with the account used last time
-            find(By.res(packageName, "fab")).click();
+            tap(By.res(packageName, "fab"));
             find(By.res(packageName, "amount"));
             hideKeyboard();
-            find(By.res(packageName, "category")).click();
-            find(By.text("Restaurants")).click();
+            tap(By.res(packageName, "category"));
+            tap(By.text("Restaurants"));
             find(By.res(packageName, "account").text("Credit card"));
             settle();
             shot("13-remembered-account");
+
+            // a new category can be added to a group straight from the category list
+            tap(By.res(packageName, "category"));
+            scrollSheetTo("Choose a category", By.text("Add a category")).click();
+            tap(By.text("Food"));
+            type(By.clazz("android.widget.EditText").focused(true), "Bakery");
+            tap(By.text("Add"));
+            find(By.res(packageName, "category").textContains("Bakery"));
 
             // a Google Wallet purchase waits under To review, with the shop's last category and that category's account
             PendingPayments.add(context, PaymentNotification.parse("Corner Café", "$18.20 with Visa •••• 1234"), System.currentTimeMillis(), "test");
@@ -161,13 +179,13 @@ public class ScreenshotTest {
                 throw new AssertionError("The saved purchase is still waiting for review");
             }
 
-            find(By.res(packageName, "action_settings")).click();
+            tap(By.res(packageName, "action_settings"));
             find(By.text("Theme"));
             shot("16-settings");
             device.pressBack();
 
-            find(By.res(packageName, "nav_more")).click();
-            find(By.text("Reports")).click();
+            tap(By.res(packageName, "nav_more"));
+            tap(By.text("Reports"));
             device.wait(Until.hasObject(By.pkg(packageName).clazz("android.webkit.WebView")), TIMEOUT);
             // the web app is a large bundle, so give it time to start and draw the report
             device.wait(Until.hasObject(By.pkg(packageName).textContains("Expense")), TIMEOUT);
@@ -183,15 +201,15 @@ public class ScreenshotTest {
             }
 
             // switch to dark through the app's own setting; changing the system night mode restarts Play services on the emulator
-            find(By.res(packageName, "action_settings")).click();
-            find(By.text("Theme")).click();
-            find(By.text("Dark")).click();
+            tap(By.res(packageName, "action_settings"));
+            tap(By.text("Theme"));
+            tap(By.text("Dark"));
             find(By.text("Theme"));
             settle();
             shot("18-settings-dark");
-            device.pressBack();
+            backTo(By.res(packageName, "nav_overview"));
 
-            find(By.res(packageName, "nav_overview")).click();
+            tap(By.res(packageName, "nav_overview"));
             // the purchases saved above are now the latest transactions
             find(By.textContains("Lunch"));
             settle();
@@ -220,12 +238,44 @@ public class ScreenshotTest {
     }
 
     /** Scrolls the form until the field is on screen, since the add screen is taller than the phone. */
+    /** Scrolls the list in the choice sheet with the given title until the selector shows. */
+    private UiObject2 scrollSheetTo(String title, BySelector selector) {
+        find(By.text(title));
+        UiObject2 found = device.findObject(selector);
+
+        for (int i = 0; i < 6 && (found == null || found.getVisibleBounds().height() < 20); i++) {
+            // a short list fits on screen and isn't scrollable at all
+            UiObject2 sheet = device.findObject(By.scrollable(true).hasDescendant(By.text(title)));
+
+            if (sheet == null) {
+                break;
+            }
+
+            sheet.scroll(Direction.DOWN, 0.6f);
+            device.waitForIdle();
+            found = device.findObject(selector);
+        }
+
+        if (found == null) {
+            throw new AssertionError("Not found in the sheet: " + selector);
+        }
+
+        return found;
+    }
+
     private UiObject2 scrollTo(BySelector selector) {
         UiObject2 scroll = find(By.res(packageName, "scroll"));
         UiObject2 found = device.findObject(selector);
 
         for (int i = 0; i < 6 && (found == null || found.getVisibleBounds().height() < 20); i++) {
-            scroll.scroll(Direction.DOWN, 0.6f);
+            try {
+                scroll.scroll(Direction.DOWN, 0.6f);
+            } catch (StaleObjectException e) {
+                // a system dialog over the app makes the scroll view stale; close it and look again
+                dismissSystemDialogs();
+                scroll = find(By.res(packageName, "scroll"));
+            }
+
             device.waitForIdle();
             found = device.findObject(selector);
         }
@@ -247,6 +297,22 @@ public class ScreenshotTest {
                 if (attempt == 3) {
                     throw e;
                 }
+                device.waitForIdle();
+            }
+        }
+    }
+
+    /** Clicks what the selector finds, finding it again if the screen redrew it in between. */
+    private void tap(BySelector selector) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                find(selector).click();
+                return;
+            } catch (StaleObjectException e) {
+                if (attempt == 3) {
+                    throw e;
+                }
+
                 device.waitForIdle();
             }
         }
@@ -279,6 +345,26 @@ public class ScreenshotTest {
     }
 
     // Pressing back with no keyboard showing would leave the screen, so only press it when one is up.
+    // the keyboard can open after hideKeyboard looked for it and cover a button at the bottom of the form
+    private void tapBelowKeyboard(BySelector selector) {
+        // the keyboard can also come back after being closed, so keep closing it (or scroll the form) a few times
+        for (int i = 0; i < 4 && !device.wait(Until.hasObject(selector), 3000); i++) {
+            if (device.hasObject(By.pkg("com.google.android.inputmethod.latin"))) {
+                device.pressBack();
+            } else {
+                UiObject2 scroll = device.findObject(By.res(packageName, "scroll"));
+
+                if (scroll != null) {
+                    scroll.scroll(Direction.DOWN, 0.6f);
+                }
+            }
+
+            device.waitForIdle();
+        }
+
+        tap(selector);
+    }
+
     private void hideKeyboard() throws IOException, InterruptedException {
         device.waitForIdle();
         String state = device.executeShellCommand("dumpsys input_method");

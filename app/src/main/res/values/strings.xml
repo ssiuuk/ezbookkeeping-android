@@ -101,7 +101,6 @@
     <string name="account_required">Choose an account</string>
     <string name="destination_account_required">Choose the account to transfer to</string>
     <string name="same_account">Choose two different accounts</string>
-    <string name="no_categories">No categories of this type yet. Add them in More → Categories.</string>
     <string name="read_only_transaction">This transaction can\'t be edited here.</string>
     <string name="search">Search</string>
     <string name="search_hint">Search descriptions</string>
@@ -166,6 +165,16 @@
     <string name="merchant">Merchant</string>
     <string name="no_merchant">No merchant</string>
     <string name="choose_merchant">Choose a merchant</string>
+    <string name="add_category">Add a category</string>
+    <string name="choose_category_group">Add it to which group?</string>
+    <string name="new_category_group">New group</string>
+    <string name="new_category">New category</string>
+    <string name="new_category_in">New category in %1$s</string>
+    <string name="category_group_name">Group name</string>
+    <string name="category_name">Category name</string>
+    <string name="name_required">Enter a name</string>
+    <string name="move_incomplete_title">Copied, but not moved</string>
+    <string name="move_incomplete_message">The transaction was saved in the new book, but couldn\'t be removed from %1$s (%2$s). Delete it there so it isn\'t counted twice.</string>
     <string name="add_merchant">Add a merchant</string>
     <string name="new_merchant">New merchant</string>
     <string name="merchant_name">Merchant name</string>
@@ -178,7 +187,7 @@
     <string name="photo_unreadable">Couldn\'t read that photo</string>
     <string name="photo_description">Photo attached to this transaction</string>
     <string name="book_change_title">Move to another book?</string>
-    <string name="book_change_message">Category, accounts, tags, project and photos belong to each book, so they will be cleared.</string>
+    <string name="book_change_message">Each book has its own categories, accounts, tags and projects. Ones with the same name in the other book are picked for you, so check them before saving.</string>
     <string name="change">Change</string>
     <string name="payment_capture_service">Google Wallet purchases</string>
     <string name="payment_capture">Google Wallet purchases</string>

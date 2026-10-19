@@ -29,6 +29,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.FileProvider;
 
 import com.google.android.material.button.MaterialButton;
@@ -77,6 +78,10 @@ public class TransactionEditActivity extends BaseActivity {
     private static final int MENU_DISMISS = 2;
     private static final int MAX_PHOTO_SIZE = 2048;
     private static final int MAX_MERCHANT_LENGTH = 64;
+    private static final int MAX_CATEGORY_NAME_LENGTH = 64;
+    // the server's first category icon and a neutral grey, for a group added from the app
+    private static final String NEW_CATEGORY_ICON = "1";
+    private static final String NEW_CATEGORY_COLOR = "8a8a8a";
     private static final ExecutorService PHOTO_WORKER = Executors.newSingleThreadExecutor();
 
     /** A photo on the form: being prepared or uploaded, or already on the server. */
@@ -87,12 +92,26 @@ public class TransactionEditActivity extends BaseActivity {
         boolean uploading;
     }
 
+    /** Choices from the previous book, looked up by name in the new one. */
+    private static final class Carried {
+        String categoryName;
+        String categoryParentName;
+        Models.Account account;
+        Models.Account destinationAccount;
+        final List<String> tagNames = new ArrayList<>();
+        String projectName;
+    }
+
     private Server server;
     private String transactionId;
     private Models.Transaction original;
     private boolean originalApplied;
 
     private String bookId;
+    /** The book an existing transaction is in; saving it in another book moves it there. */
+    private String originalBookId;
+    /** What was chosen before switching books, to pick the same names again in the new book. */
+    private Carried carried;
     private List<Models.Book> books = new ArrayList<>();
     private RecentChoices recent;
 
@@ -201,6 +220,7 @@ public class TransactionEditActivity extends BaseActivity {
         }
 
         bookId = server.bookId;
+        originalBookId = bookId;
         recent = new RecentChoices(this, server, bookId);
         setContentView(R.layout.activity_transaction_edit);
         setupToolbar(pending != null ? R.string.review_purchase : transactionId == null ? R.string.add_transaction : R.string.edit_transaction, true).setNavigationIcon(R.drawable.ic_close);
@@ -350,11 +370,6 @@ public class TransactionEditActivity extends BaseActivity {
     }
 
     private void loadBooks() {
-        if (transactionId != null) {
-            // an existing transaction stays in its book
-            return;
-        }
-
         new Api(server).withoutBook().get("v1/books/list.json", null, Models.Book::parseList, new Api.Callback<List<Models.Book>>() {
             @Override
             public void onSuccess(List<Models.Book> result) {
@@ -388,7 +403,9 @@ public class TransactionEditActivity extends BaseActivity {
         Api api = api();
         int generation = ++loadGeneration;
         setBusy(true);
-        pendingLoads = transactionId == null ? 5 : 6;
+        // the transaction itself is fetched once; switching books keeps it and reloads only the book's lists
+        boolean fetchTransaction = transactionId != null && original == null;
+        pendingLoads = fetchTransaction ? 6 : 5;
 
         api.get("v1/accounts/list.json", Api.query("visible_only", "true"), Models.Account::parseList, new Api.Callback<List<Models.Account>>() {
             @Override
@@ -478,7 +495,7 @@ public class TransactionEditActivity extends BaseActivity {
             }
         });
 
-        if (transactionId != null) {
+        if (fetchTransaction) {
             api.get("v1/transactions/get.json", Api.query("id", transactionId, "trim_account", "false", "trim_category", "false", "trim_tag", "false"),
                 result -> Models.Transaction.parse((JSONObject) result), new Api.Callback<Models.Transaction>() {
                     @Override
@@ -540,6 +557,11 @@ public class TransactionEditActivity extends BaseActivity {
                     applyRememberedAccounts(category.id);
                 }
             }
+        }
+
+        if (carried != null) {
+            applyCarried();
+            carried = null;
         }
 
         renderAll();
@@ -684,7 +706,7 @@ public class TransactionEditActivity extends BaseActivity {
 
     private void renderAll() {
         boolean transfer = type == Models.TRANSACTION_TRANSFER;
-        boolean canChooseBook = transactionId == null && books.size() > 1;
+        boolean canChooseBook = books.size() > 1;
         bookLayout.setVisibility(canChooseBook ? View.VISIBLE : View.GONE);
         bookInput.setText(bookLabel(findBook(bookId)));
 
@@ -885,7 +907,7 @@ public class TransactionEditActivity extends BaseActivity {
                 return;
             }
 
-            boolean hasEntries = category != null || !tagIds.isEmpty() || !merchant.isEmpty() || !"0".equals(projectId) || !photos.isEmpty();
+            boolean hasEntries = original != null || category != null || !tagIds.isEmpty() || !"0".equals(projectId) || !photos.isEmpty();
 
             if (!hasEntries) {
                 switchBook(chosen);
@@ -902,6 +924,32 @@ public class TransactionEditActivity extends BaseActivity {
     }
 
     private void switchBook(String chosen) {
+        carried = new Carried();
+
+        if (category != null) {
+            carried.categoryName = category.name;
+            Models.Category parent = findParentCategory(category);
+            carried.categoryParentName = parent == null ? null : parent.name;
+        }
+
+        carried.account = account;
+        carried.destinationAccount = destinationAccount;
+
+        for (String tagId : tagIds) {
+            Models.Tag tag = findTag(tagId);
+
+            if (tag != null) {
+                carried.tagNames.add(tag.name);
+            }
+        }
+
+        for (Models.Project project : projects) {
+            if (project.id.equals(projectId)) {
+                carried.projectName = project.name;
+            }
+        }
+
+        Api previousBook = api();
         bookId = chosen;
         recent = new RecentChoices(this, server, bookId);
         category = null;
@@ -910,16 +958,156 @@ public class TransactionEditActivity extends BaseActivity {
         accountChosen = false;
         destinationChosen = false;
         tagIds.clear();
-        merchant = pending != null ? pending.merchant : "";
         merchants = new ArrayList<>();
         projectId = "0";
-        photos.clear();
+        copyPhotosFrom(previousBook);
         accounts = new ArrayList<>();
         tags = new ArrayList<>();
         projects = new ArrayList<>();
         categoriesResult = null;
         renderAll();
         loadBookData();
+    }
+
+    private Models.Category findParentCategory(Models.Category sub) {
+        for (Models.Category parent : categoriesOfType()) {
+            if (parent.id.equals(sub.parentId)) {
+                return parent;
+            }
+        }
+
+        return null;
+    }
+
+    /** Picks the category, accounts, tags and project with the same names in the new book. */
+    private void applyCarried() {
+        if (carried.categoryName != null) {
+            Models.Category sameName = null;
+
+            for (Models.Category parent : categoriesOfType()) {
+                for (Models.Category sub : parent.subCategories) {
+                    if (sub.hidden || !sub.name.equalsIgnoreCase(carried.categoryName)) {
+                        continue;
+                    }
+
+                    if (parent.name.equalsIgnoreCase(carried.categoryParentName)) {
+                        category = sub;
+                    } else if (sameName == null) {
+                        sameName = sub;
+                    }
+                }
+            }
+
+            if (category == null) {
+                category = sameName;
+            }
+        }
+
+        Models.Account sameAccount = findCarriedAccount(carried.account);
+
+        if (sameAccount != null) {
+            account = sameAccount;
+            accountChosen = true;
+        }
+
+        Models.Account sameDestination = findCarriedAccount(carried.destinationAccount);
+
+        if (sameDestination != null) {
+            destinationAccount = sameDestination;
+            destinationChosen = true;
+        }
+
+        for (String name : carried.tagNames) {
+            for (Models.Tag tag : tags) {
+                if (tag.name.equalsIgnoreCase(name) && !tagIds.contains(tag.id)) {
+                    tagIds.add(tag.id);
+                    break;
+                }
+            }
+        }
+
+        for (Models.Project project : projects) {
+            if (project.name.equalsIgnoreCase(carried.projectName)) {
+                projectId = project.id;
+            }
+        }
+    }
+
+    /** An account shared with both books keeps its id; otherwise one with the same name and currency. */
+    private Models.Account findCarriedAccount(Models.Account previous) {
+        if (previous == null) {
+            return null;
+        }
+
+        Models.Account same = findAccount(previous.id);
+
+        if (same != null) {
+            return same;
+        }
+
+        for (Models.Account candidate : accounts) {
+            if (TextUtils.equals(candidate.name, previous.name) && TextUtils.equals(candidate.currency, previous.currency)) {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /** Photos belong to a book, so each one is uploaded again to the newly chosen book. */
+    private void copyPhotosFrom(Api previousBook) {
+        List<Photo> copies = new ArrayList<>();
+
+        for (Photo photo : photos) {
+            if (photo.uploading || TextUtils.isEmpty(photo.url)) {
+                continue;
+            }
+
+            Photo copy = new Photo();
+            copy.url = photo.url;
+            copy.thumbnail = photo.thumbnail;
+            copy.uploading = true;
+            copies.add(copy);
+        }
+
+        photos.clear();
+        photos.addAll(copies);
+        Api newBook = api();
+
+        for (Photo copy : copies) {
+            previousBook.download(pictureUrl(copy.url), new Api.Callback<byte[]>() {
+                @Override
+                public void onSuccess(byte[] result) {
+                    PHOTO_WORKER.execute(() -> {
+                        Bitmap bitmap = BitmapFactory.decodeByteArray(result, 0, result.length);
+                        ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+                        if (bitmap != null) {
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output);
+                        }
+
+                        runOnUiThread(() -> {
+                            if (isFinishing() || isDestroyed()) {
+                                return;
+                            }
+
+                            if (bitmap == null) {
+                                photos.remove(copy);
+                                renderPhotos();
+                                showMessage(getString(R.string.photo_unreadable));
+                            } else {
+                                uploadPhoto(copy, newBook, output.toByteArray());
+                            }
+                        });
+                    });
+                }
+
+                @Override
+                public void onError(ApiException error) {
+                    photoUploadFailed(copy, error);
+                }
+            });
+        }
     }
 
     private void chooseCategory() {
@@ -944,12 +1132,14 @@ public class TransactionEditActivity extends BaseActivity {
             }
         }
 
-        if (choices.isEmpty()) {
-            showMessage(getString(R.string.no_categories));
-            return;
-        }
+        choices.add(ChoiceSheet.Choice.symbol("+", getString(R.string.add_category), "+"));
 
         ChoiceSheet.show(this, getString(R.string.choose_category), choices, choice -> {
+            if ("+".equals(choice.id)) {
+                chooseCategoryGroup();
+                return;
+            }
+
             category = findCategory(choice.id);
             categoryLayout.setError(null);
 
@@ -1034,6 +1224,149 @@ public class TransactionEditActivity extends BaseActivity {
         ChoiceSheet.show(this, getString(R.string.choose_project), choices, choice -> {
             projectId = choice.id;
             renderAll();
+        });
+    }
+
+    /** A new category goes in a group, like Restaurants in Food; the group can be new too. */
+    private void chooseCategoryGroup() {
+        List<ChoiceSheet.Choice> choices = new ArrayList<>();
+        List<Models.Category> groups = categoriesOfType();
+
+        for (Models.Category group : groups) {
+            if (!group.hidden) {
+                choices.add(ChoiceSheet.Choice.item(group.id, group.name, null, group.color));
+            }
+        }
+
+        choices.add(ChoiceSheet.Choice.symbol("+", getString(R.string.new_category_group), "+"));
+
+        ChoiceSheet.show(this, getString(R.string.choose_category_group), choices, choice -> {
+            Models.Category group = null;
+
+            for (Models.Category candidate : groups) {
+                if (candidate.id.equals(choice.id)) {
+                    group = candidate;
+                }
+            }
+
+            addCategory(group);
+        });
+    }
+
+    private void addCategory(Models.Category group) {
+        int padding = getResources().getDimensionPixelSize(R.dimen.dialog_padding);
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(padding, padding / 2, padding, 0);
+        TextInputEditText groupInput = group == null ? addNameField(form, R.string.category_group_name) : null;
+        TextInputEditText nameInput = addNameField(form, R.string.category_name);
+        (groupInput != null ? groupInput : nameInput).requestFocus();
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+            .setTitle(group == null ? getString(R.string.new_category) : getString(R.string.new_category_in, group.name))
+            .setView(form)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.add, null)
+            .show();
+        dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+
+        // checked here rather than in the button's listener, so an empty name keeps the dialog open
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            String groupName = groupInput == null || groupInput.getText() == null ? "" : groupInput.getText().toString().trim();
+            String name = nameInput.getText() == null ? "" : nameInput.getText().toString().trim();
+
+            if (groupInput != null && groupName.isEmpty()) {
+                groupInput.setError(getString(R.string.name_required));
+                return;
+            }
+
+            if (name.isEmpty()) {
+                nameInput.setError(getString(R.string.name_required));
+                return;
+            }
+
+            dialog.dismiss();
+
+            if (group != null) {
+                createCategory(name, group.id, group.icon, group.color);
+                return;
+            }
+
+            setBusy(true);
+            postCategory(groupName, "0", NEW_CATEGORY_ICON, NEW_CATEGORY_COLOR, newGroup -> createCategory(name, newGroup.id, newGroup.icon, newGroup.color));
+        });
+    }
+
+    private TextInputEditText addNameField(LinearLayout form, int hint) {
+        TextInputLayout layout = new TextInputLayout(this);
+        layout.setHint(getString(hint));
+        layout.setCounterEnabled(true);
+        layout.setCounterMaxLength(MAX_CATEGORY_NAME_LENGTH);
+        TextInputEditText input = new TextInputEditText(layout.getContext());
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(MAX_CATEGORY_NAME_LENGTH) });
+        input.setSingleLine(true);
+        layout.addView(input);
+        form.addView(layout);
+        return input;
+    }
+
+    private void createCategory(String name, String groupId, String icon, String color) {
+        setBusy(true);
+        postCategory(name, groupId, icon, color, created -> reloadCategories(created.id));
+    }
+
+    private void postCategory(String name, String parentId, String icon, String color, java.util.function.Consumer<Models.Category> then) {
+        JSONObject body = new JSONObject();
+
+        try {
+            body.put("name", name);
+            body.put("type", Models.categoryTypeOf(type));
+            body.put("parentId", parentId);
+            body.put("icon", TextUtils.isEmpty(icon) ? NEW_CATEGORY_ICON : icon);
+            body.put("color", TextUtils.isEmpty(color) ? NEW_CATEGORY_COLOR : color);
+            body.put("comment", "");
+            body.put("clientSessionId", UUID.randomUUID().toString());
+        } catch (JSONException ex) {
+            return;
+        }
+
+        api().post("v1/transaction/categories/add.json", body, result -> Models.Category.parse((JSONObject) result), new Api.Callback<Models.Category>() {
+            @Override
+            public void onSuccess(Models.Category result) {
+                then.accept(result);
+            }
+
+            @Override
+            public void onError(ApiException error) {
+                setBusy(false);
+                showMessage(error.getMessage());
+            }
+        });
+    }
+
+    /** Fetches the categories again and picks the one just added. */
+    private void reloadCategories(String selectId) {
+        api().get("v1/transaction/categories/list.json", null, result -> result, new Api.Callback<Object>() {
+            @Override
+            public void onSuccess(Object result) {
+                setBusy(false);
+                categoriesResult = result;
+                Models.Category added = findCategory(selectId);
+
+                if (added != null) {
+                    category = added;
+                    categoryLayout.setError(null);
+                }
+
+                renderAll();
+            }
+
+            @Override
+            public void onError(ApiException error) {
+                setBusy(false);
+                showMessage(error.getMessage());
+            }
         });
     }
 
@@ -1230,25 +1563,33 @@ public class TransactionEditActivity extends BaseActivity {
 
                 photo.thumbnail = preview;
                 renderPhotos();
-                uploadApi.upload("v1/transaction/pictures/upload.json", "picture", "photo.jpg", "image/jpeg", data,
-                    Api.query("clientSessionId", UUID.randomUUID().toString()), Models.Picture::parse, new Api.Callback<Models.Picture>() {
-                        @Override
-                        public void onSuccess(Models.Picture result) {
-                            photo.id = result.id;
-                            photo.url = result.url;
-                            photo.uploading = false;
-                            renderPhotos();
-                        }
-
-                        @Override
-                        public void onError(ApiException error) {
-                            photos.remove(photo);
-                            renderPhotos();
-                            showMessage(getString(R.string.photo_upload_failed, error.getMessage()));
-                        }
-                    });
+                uploadPhoto(photo, uploadApi, data);
             });
         });
+    }
+
+    private void uploadPhoto(Photo photo, Api uploadApi, byte[] jpeg) {
+        uploadApi.upload("v1/transaction/pictures/upload.json", "picture", "photo.jpg", "image/jpeg", jpeg,
+            Api.query("clientSessionId", UUID.randomUUID().toString()), Models.Picture::parse, new Api.Callback<Models.Picture>() {
+                @Override
+                public void onSuccess(Models.Picture result) {
+                    photo.id = result.id;
+                    photo.url = result.url;
+                    photo.uploading = false;
+                    renderPhotos();
+                }
+
+                @Override
+                public void onError(ApiException error) {
+                    photoUploadFailed(photo, error);
+                }
+            });
+    }
+
+    private void photoUploadFailed(Photo photo, ApiException error) {
+        photos.remove(photo);
+        renderPhotos();
+        showMessage(getString(R.string.photo_upload_failed, error.getMessage()));
     }
 
     private void loadThumbnail(Photo photo) {
@@ -1256,11 +1597,7 @@ public class TransactionEditActivity extends BaseActivity {
             return;
         }
 
-        // the server builds picture links from its configured root address, which may not be how this phone reaches it
-        int path = photo.url.indexOf("/pictures/");
-        String url = path >= 0 ? server.url + photo.url.substring(path) : photo.url;
-
-        api().download(url, new Api.Callback<byte[]>() {
+        api().download(pictureUrl(photo.url), new Api.Callback<byte[]>() {
             @Override
             public void onSuccess(byte[] result) {
                 PHOTO_WORKER.execute(() -> {
@@ -1281,6 +1618,12 @@ public class TransactionEditActivity extends BaseActivity {
                 // the photo stays attached; only its preview is missing
             }
         });
+    }
+
+    /** The server builds picture links from its configured root address, which may not be how this phone reaches it. */
+    private String pictureUrl(String url) {
+        int path = url.indexOf("/pictures/");
+        return path >= 0 ? server.url + url.substring(path) : url;
     }
 
     private Bitmap readScaledBitmap(Uri uri, int maxSize) {
@@ -1413,8 +1756,10 @@ public class TransactionEditActivity extends BaseActivity {
 
         JSONObject body = new JSONObject();
 
+        boolean moving = original != null && !TextUtils.equals(bookId, originalBookId);
+
         try {
-            if (original != null) {
+            if (original != null && !moving) {
                 body.put("id", original.id);
             } else {
                 body.put("clientSessionId", clientSessionId);
@@ -1453,9 +1798,14 @@ public class TransactionEditActivity extends BaseActivity {
         String savedDestinationId = type == Models.TRANSACTION_TRANSFER ? destinationAccount.id : null;
         int savedType = type;
 
-        api().post(original == null ? "v1/transactions/add.json" : "v1/transactions/modify.json", body, null, new Api.Callback<Object>() {
+        api().post(original == null || moving ? "v1/transactions/add.json" : "v1/transactions/modify.json", body, null, new Api.Callback<Object>() {
             @Override
             public void onSuccess(Object result) {
+                if (moving) {
+                    removeFromOriginalBook();
+                    return;
+                }
+
                 recent.remember(savedType, savedCategoryId, savedAccountId, savedDestinationId);
                 recent.rememberMerchant(savedMerchant, savedCategoryId);
 
@@ -1474,6 +1824,40 @@ public class TransactionEditActivity extends BaseActivity {
                 showMessage(error.getMessage());
             }
         });
+    }
+
+    /** A transaction moves to another book by being added there and then deleted from its old book. */
+    private void removeFromOriginalBook() {
+        JSONObject body = new JSONObject();
+
+        try {
+            body.put("id", original.id);
+        } catch (JSONException ex) {
+            return;
+        }
+
+        originalBookApi().post("v1/transactions/delete.json", body, null, new Api.Callback<Object>() {
+            @Override
+            public void onSuccess(Object result) {
+                Ui.dataChanged();
+                finish();
+            }
+
+            @Override
+            public void onError(ApiException error) {
+                Ui.dataChanged();
+                new MaterialAlertDialogBuilder(TransactionEditActivity.this)
+                    .setTitle(R.string.move_incomplete_title)
+                    .setMessage(getString(R.string.move_incomplete_message, bookLabel(findBook(originalBookId)), error.getMessage()))
+                    .setPositiveButton(R.string.ok, null)
+                    .setOnDismissListener(dialog -> finish())
+                    .show();
+            }
+        });
+    }
+
+    private Api originalBookApi() {
+        return new Api(server).withBook(originalBookId);
     }
 
     private void confirmDelete() {
@@ -1495,7 +1879,7 @@ public class TransactionEditActivity extends BaseActivity {
                 }
 
                 setBusy(true);
-                api().post("v1/transactions/delete.json", body, null, new Api.Callback<Object>() {
+                originalBookApi().post("v1/transactions/delete.json", body, null, new Api.Callback<Object>() {
                     @Override
                     public void onSuccess(Object result) {
                         Ui.dataChanged();

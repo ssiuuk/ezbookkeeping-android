@@ -150,6 +150,7 @@ public final class Models {
         public String parentId;
         public int type;
         public String color;
+        public String icon;
         public boolean hidden;
         public final List<Category> subCategories = new ArrayList<>();
 
@@ -160,6 +161,7 @@ public final class Models {
             category.parentId = json.optString("parentId", "0");
             category.type = json.optInt("type");
             category.color = json.optString("color");
+            category.icon = json.optString("icon");
             category.hidden = json.optBoolean("hidden");
 
             JSONArray subCategories = json.optJSONArray("subCategories");
