@@ -403,7 +403,9 @@ public class TransactionEditActivity extends BaseActivity {
         Api api = api();
         int generation = ++loadGeneration;
         setBusy(true);
-        pendingLoads = transactionId == null ? 5 : 6;
+        // the transaction itself is fetched once; switching books keeps it and reloads only the book's lists
+        boolean fetchTransaction = transactionId != null && original == null;
+        pendingLoads = fetchTransaction ? 6 : 5;
 
         api.get("v1/accounts/list.json", Api.query("visible_only", "true"), Models.Account::parseList, new Api.Callback<List<Models.Account>>() {
             @Override
@@ -493,7 +495,7 @@ public class TransactionEditActivity extends BaseActivity {
             }
         });
 
-        if (transactionId != null) {
+        if (fetchTransaction) {
             api.get("v1/transactions/get.json", Api.query("id", transactionId, "trim_account", "false", "trim_category", "false", "trim_tag", "false"),
                 result -> Models.Transaction.parse((JSONObject) result), new Api.Callback<Models.Transaction>() {
                     @Override
