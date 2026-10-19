@@ -54,14 +54,14 @@ public class ScreenshotTest {
             type(By.res(packageName, "server_address"), serverUrl);
             type(By.res(packageName, "server_name"), "Home");
             hideKeyboard();
-            find(By.res(packageName, "connect_button")).click();
+            tapBelowKeyboard(By.res(packageName, "connect_button"));
 
             find(By.res(packageName, "login_name"));
             shot("02-sign-in");
             type(By.res(packageName, "login_name"), "demo");
             type(By.res(packageName, "password"), "demo123456");
             hideKeyboard();
-            find(By.res(packageName, "sign_in_button")).click();
+            tapBelowKeyboard(By.res(packageName, "sign_in_button"));
 
             find(By.res(packageName, "bottom_nav"));
             find(By.textContains("Weekly shop"));
@@ -307,6 +307,16 @@ public class ScreenshotTest {
     }
 
     // Pressing back with no keyboard showing would leave the screen, so only press it when one is up.
+    // the keyboard can open after hideKeyboard looked for it and cover a button at the bottom of the form
+    private void tapBelowKeyboard(BySelector selector) {
+        if (!device.wait(Until.hasObject(selector), 3000)) {
+            device.pressBack();
+            device.waitForIdle();
+        }
+
+        find(selector).click();
+    }
+
     private void hideKeyboard() throws IOException, InterruptedException {
         device.waitForIdle();
         String state = device.executeShellCommand("dumpsys input_method");
