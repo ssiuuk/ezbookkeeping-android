@@ -316,8 +316,18 @@ public class ScreenshotTest {
     // Pressing back with no keyboard showing would leave the screen, so only press it when one is up.
     // the keyboard can open after hideKeyboard looked for it and cover a button at the bottom of the form
     private void tapBelowKeyboard(BySelector selector) {
-        if (!device.wait(Until.hasObject(selector), 3000)) {
-            device.pressBack();
+        // the keyboard can also come back after being closed, so keep closing it (or scroll the form) a few times
+        for (int i = 0; i < 4 && !device.wait(Until.hasObject(selector), 3000); i++) {
+            if (device.hasObject(By.pkg("com.google.android.inputmethod.latin"))) {
+                device.pressBack();
+            } else {
+                UiObject2 scroll = device.findObject(By.res(packageName, "scroll"));
+
+                if (scroll != null) {
+                    scroll.scroll(Direction.DOWN, 0.6f);
+                }
+            }
+
             device.waitForIdle();
         }
 
