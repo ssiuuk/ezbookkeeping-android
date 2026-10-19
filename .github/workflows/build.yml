@@ -10,6 +10,13 @@ on:
       server_ref:
         description: 'Branch, tag or commit of ssiuuk/ezbookkeeping to test against (default: the one in SERVER_REF)'
         required: false
+      release_tag:
+        description: 'Attach the built app to this existing release (for a release published before releases were built automatically)'
+        required: false
+  # publishing a release builds the app and attaches it to the release
+  release:
+    types:
+      - published
   # the server repository sends this when its main branch changes
   repository_dispatch:
     types:
@@ -27,11 +34,26 @@ env:
 
 jobs:
   build:
-    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
+      - name: Choose the release
+        id: release
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.event.inputs.release_tag }}
+        run: |
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          if [ -n "$RELEASE_TAG" ]; then
+            # a tag such as v1.2.0 becomes the version name 1.2.0
+            echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=1.1.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.release.outputs.tag || github.ref }}
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -54,7 +76,7 @@ jobs:
       - name: Build
         env:
           APP_VERSION_CODE: ${{ github.run_number }}
-          APP_VERSION_NAME: 1.1.${{ github.run_number }}
+          APP_VERSION_NAME: ${{ steps.release.outputs.version }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -70,7 +92,7 @@ jobs:
           path: ${{ runner.temp }}/ezbookkeeping-android.apk
 
       - name: Publish to the android-latest release
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.release.outputs.tag == ''
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -81,6 +103,14 @@ jobs:
               --notes "Open this page on your Android phone and download ezbookkeeping-android.apk to install or update the app."
           fi
           gh release upload android-latest "$RUNNER_TEMP/ezbookkeeping-android.apk" --clobber
+
+      - name: Attach to the release
+        if: steps.release.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/ezbookkeeping-android.apk" --clobber
 
       - name: Publish to the android-preview release
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
@@ -98,7 +128,7 @@ jobs:
 
   screenshots:
     # runs the app on an emulator against the ezBookkeeping server from SERVER_REPO and saves a screenshot of each screen
-    if: github.event_name != 'push'
+    if: github.event_name != 'push' && github.event_name != 'release'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

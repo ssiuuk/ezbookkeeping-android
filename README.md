@@ -13,6 +13,8 @@ You can add several servers and switch between them in Settings, for example a h
 
 To add or switch servers later, open **Settings → Manage servers**, or long-press the app icon and choose **Change server**.
 
+Publishing a release (for example with the tag `v1.2.0`) builds the app from that tag, names the version after it (`1.2.0`) and attaches `ezbookkeeping-android.apk` to the release. For a release published before this, run the **Build Android App** workflow by hand with its tag as `release_tag`.
+
 Pull requests that change the app publish a test build to the **Android app (preview of an open pull request)** release, along with screenshots of each screen taken on an emulator (`screenshots.zip`).
 
 ## Signing, so updates install over the old version
