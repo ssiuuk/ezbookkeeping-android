@@ -208,11 +208,11 @@ public class ScreenshotTest {
             shot("19-overview-dark");
 
             // move the lunch to the family book, where the category and card have the same names
-            find(By.textContains("Lunch")).click();
+            tap(By.textContains("Lunch"));
             find(By.res(packageName, "merchant").text("Corner Café"));
             scrollTo(By.res(packageName, "book")).click();
-            find(By.text("Family")).click();
-            find(By.text("Change")).click();
+            tap(By.text("Family"));
+            tap(By.text("Change"));
             find(By.res(packageName, "category").textContains("Restaurants"));
             // a shared account shows its owner, as in "Credit card (Alex)"
             find(By.res(packageName, "account").textStartsWith("Credit card"));
