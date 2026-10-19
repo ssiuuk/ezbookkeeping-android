@@ -9,6 +9,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.BySelector;
 import androidx.test.uiautomator.Direction;
+import androidx.test.uiautomator.StaleObjectException;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.Until;
@@ -50,15 +51,15 @@ public class ScreenshotTest {
 
             find(By.res(packageName, "server_address"));
             shot("01-welcome");
-            find(By.res(packageName, "server_address")).setText(serverUrl);
-            find(By.res(packageName, "server_name")).setText("Home");
+            type(By.res(packageName, "server_address"), serverUrl);
+            type(By.res(packageName, "server_name"), "Home");
             hideKeyboard();
             find(By.res(packageName, "connect_button")).click();
 
             find(By.res(packageName, "login_name"));
             shot("02-sign-in");
-            find(By.res(packageName, "login_name")).setText("demo");
-            find(By.res(packageName, "password")).setText("demo123456");
+            type(By.res(packageName, "login_name"), "demo");
+            type(By.res(packageName, "password"), "demo123456");
             hideKeyboard();
             find(By.res(packageName, "sign_in_button")).click();
 
@@ -90,7 +91,7 @@ public class ScreenshotTest {
             settle();
             shot("07-add-transaction");
 
-            find(By.res(packageName, "amount")).setText("12.50");
+            type(By.res(packageName, "amount"), "12.50");
             hideKeyboard();
             find(By.res(packageName, "category")).click();
             find(By.text("Restaurants"));
@@ -110,7 +111,7 @@ public class ScreenshotTest {
 
             scrollTo(By.res(packageName, "merchant")).click();
             find(By.text("Add a merchant")).click();
-            find(By.clazz("android.widget.EditText").focused(true)).setText("Corner Café");
+            type(By.clazz("android.widget.EditText").focused(true), "Corner Café");
             find(By.text("Add")).click();
             find(By.res(packageName, "merchant").text("Corner Café"));
 
@@ -234,6 +235,21 @@ public class ScreenshotTest {
         }
 
         return found;
+    }
+
+    // fields in a dialog can be rebuilt while it opens, so look the field up again if it goes stale
+    private void type(BySelector selector, String text) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                find(selector).setText(text);
+                return;
+            } catch (StaleObjectException e) {
+                if (attempt == 3) {
+                    throw e;
+                }
+                device.waitForIdle();
+            }
+        }
     }
 
     private UiObject2 find(BySelector selector) {
