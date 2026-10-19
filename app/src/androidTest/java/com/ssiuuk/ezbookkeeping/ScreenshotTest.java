@@ -260,7 +260,14 @@ public class ScreenshotTest {
         UiObject2 found = device.findObject(selector);
 
         for (int i = 0; i < 6 && (found == null || found.getVisibleBounds().height() < 20); i++) {
-            scroll.scroll(Direction.DOWN, 0.6f);
+            try {
+                scroll.scroll(Direction.DOWN, 0.6f);
+            } catch (StaleObjectException e) {
+                // a system dialog over the app makes the scroll view stale; close it and look again
+                dismissSystemDialogs();
+                scroll = find(By.res(packageName, "scroll"));
+            }
+
             device.waitForIdle();
             found = device.findObject(selector);
         }
