@@ -68,22 +68,22 @@ public class ScreenshotTest {
             settle();
             shot("03-overview");
 
-            find(By.res(packageName, "nav_transactions")).click();
+            tap(By.res(packageName, "nav_transactions"));
             find(By.textContains("Dinner with friends"));
             settle();
             shot("04-transactions");
 
-            find(By.res(packageName, "nav_accounts")).click();
+            tap(By.res(packageName, "nav_accounts"));
             find(By.text("Savings"));
             settle();
             shot("05-accounts");
 
-            find(By.res(packageName, "nav_more")).click();
+            tap(By.res(packageName, "nav_more"));
             find(By.text("Reports"));
             shot("06-more");
 
-            find(By.res(packageName, "nav_overview")).click();
-            find(By.res(packageName, "fab")).click();
+            tap(By.res(packageName, "nav_overview"));
+            tap(By.res(packageName, "fab"));
             find(By.res(packageName, "amount"));
             hideKeyboard();
             // the test server has a shared "Family" book, so the book field is offered
@@ -93,26 +93,26 @@ public class ScreenshotTest {
 
             type(By.res(packageName, "amount"), "12.50");
             hideKeyboard();
-            find(By.res(packageName, "category")).click();
+            tap(By.res(packageName, "category"));
             find(By.text("Restaurants"));
             settle();
             shot("08-choose-category");
-            find(By.text("Restaurants")).click();
+            tap(By.text("Restaurants"));
 
-            find(By.res(packageName, "account")).click();
+            tap(By.res(packageName, "account"));
             find(By.text("Credit cards"));
             settle();
             shot("09-choose-account");
-            find(By.text("Credit card")).click();
+            tap(By.text("Credit card"));
 
             scrollTo(By.res(packageName, "project")).click();
-            find(By.text("Holiday")).click();
+            tap(By.text("Holiday"));
             find(By.res(packageName, "project").text("Holiday"));
 
             scrollTo(By.res(packageName, "merchant")).click();
-            find(By.text("Add a merchant")).click();
+            tap(By.text("Add a merchant"));
             type(By.clazz("android.widget.EditText").focused(true), "Corner Café");
-            find(By.text("Add")).click();
+            tap(By.text("Add"));
             find(By.res(packageName, "merchant").text("Corner Café"));
 
             scrollTo(By.res(packageName, "comment")).setText("Lunch");
@@ -125,7 +125,7 @@ public class ScreenshotTest {
             settle();
             shot("11-overview-after-adding");
 
-            find(By.textContains("Lunch")).click();
+            tap(By.textContains("Lunch"));
             find(By.res(packageName, "merchant").text("Corner Café"));
             scrollTo(By.res(packageName, "project").text("Holiday"));
             settle();
@@ -135,21 +135,21 @@ public class ScreenshotTest {
             device.pressBack();
 
             // a new expense in the same category starts with the account used last time
-            find(By.res(packageName, "fab")).click();
+            tap(By.res(packageName, "fab"));
             find(By.res(packageName, "amount"));
             hideKeyboard();
-            find(By.res(packageName, "category")).click();
-            find(By.text("Restaurants")).click();
+            tap(By.res(packageName, "category"));
+            tap(By.text("Restaurants"));
             find(By.res(packageName, "account").text("Credit card"));
             settle();
             shot("13-remembered-account");
 
             // a new category can be added to a group straight from the category list
-            find(By.res(packageName, "category")).click();
+            tap(By.res(packageName, "category"));
             scrollSheetTo("Choose a category", By.text("Add a category")).click();
-            find(By.text("Food")).click();
+            tap(By.text("Food"));
             type(By.clazz("android.widget.EditText").focused(true), "Bakery");
-            find(By.text("Add")).click();
+            tap(By.text("Add"));
             find(By.res(packageName, "category").textContains("Bakery"));
 
             // a Google Wallet purchase waits under To review, with the shop's last category and that category's account
@@ -171,13 +171,13 @@ public class ScreenshotTest {
                 throw new AssertionError("The saved purchase is still waiting for review");
             }
 
-            find(By.res(packageName, "action_settings")).click();
+            tap(By.res(packageName, "action_settings"));
             find(By.text("Theme"));
             shot("16-settings");
             device.pressBack();
 
-            find(By.res(packageName, "nav_more")).click();
-            find(By.text("Reports")).click();
+            tap(By.res(packageName, "nav_more"));
+            tap(By.text("Reports"));
             device.wait(Until.hasObject(By.pkg(packageName).clazz("android.webkit.WebView")), TIMEOUT);
             // the web app is a large bundle, so give it time to start and draw the report
             device.wait(Until.hasObject(By.pkg(packageName).textContains("Expense")), TIMEOUT);
@@ -193,15 +193,15 @@ public class ScreenshotTest {
             }
 
             // switch to dark through the app's own setting; changing the system night mode restarts Play services on the emulator
-            find(By.res(packageName, "action_settings")).click();
-            find(By.text("Theme")).click();
-            find(By.text("Dark")).click();
+            tap(By.res(packageName, "action_settings"));
+            tap(By.text("Theme"));
+            tap(By.text("Dark"));
             find(By.text("Theme"));
             settle();
             shot("18-settings-dark");
             device.pressBack();
 
-            find(By.res(packageName, "nav_overview")).click();
+            tap(By.res(packageName, "nav_overview"));
             // the purchases saved above are now the latest transactions
             find(By.textContains("Lunch"));
             settle();
@@ -294,6 +294,22 @@ public class ScreenshotTest {
         }
     }
 
+    /** Clicks what the selector finds, finding it again if the screen redrew it in between. */
+    private void tap(BySelector selector) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                find(selector).click();
+                return;
+            } catch (StaleObjectException e) {
+                if (attempt == 3) {
+                    throw e;
+                }
+
+                device.waitForIdle();
+            }
+        }
+    }
+
     private UiObject2 find(BySelector selector) {
         long deadline = System.currentTimeMillis() + TIMEOUT;
 
@@ -338,7 +354,7 @@ public class ScreenshotTest {
             device.waitForIdle();
         }
 
-        find(selector).click();
+        tap(selector);
     }
 
     private void hideKeyboard() throws IOException, InterruptedException {
