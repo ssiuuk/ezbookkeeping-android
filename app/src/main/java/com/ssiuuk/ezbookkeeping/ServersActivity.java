@@ -201,6 +201,11 @@ public class ServersActivity extends BaseActivity {
     }
 
     private void connect() {
+        // a hardware Enter key can call this again while the first check is still running
+        if (!connectButton.isEnabled()) {
+            return;
+        }
+
         String url = ServerStore.normalizeServerUrl(addressInput.getText() == null ? "" : addressInput.getText().toString());
 
         if (url == null) {
