@@ -294,17 +294,6 @@ public class ScreenshotTest {
         }
     }
 
-    /** Presses back until the selector shows; a back press during the theme change's redraw can be lost. */
-    private void backTo(BySelector selector) {
-        for (int i = 0; i < 3; i++) {
-            device.pressBack();
-
-            if (device.wait(Until.hasObject(selector), 3000)) {
-                return;
-            }
-        }
-    }
-
     /** Clicks what the selector finds, finding it again if the screen redrew it in between. */
     private void tap(BySelector selector) {
         for (int attempt = 1; ; attempt++) {
