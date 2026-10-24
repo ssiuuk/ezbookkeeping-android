@@ -142,6 +142,20 @@ public class ScreenshotTest {
             scrollTo(By.res(packageName, "book"));
             device.pressBack();
 
+            // a shop doesn't replace the account a new transaction was started from
+            tap(By.res(packageName, "nav_accounts"));
+            tap(By.text("Savings"));
+            tap(By.res(packageName, "fab"));
+            find(By.res(packageName, "amount"));
+            hideKeyboard();
+            find(By.res(packageName, "account").text("Savings"));
+            scrollTo(By.res(packageName, "merchant")).click();
+            tap(By.text("Corner Café"));
+            find(By.res(packageName, "merchant").text("Corner Café"));
+            find(By.res(packageName, "scroll")).scroll(Direction.UP, 1.0f);
+            find(By.res(packageName, "account").text("Savings"));
+            backTo(By.res(packageName, "nav_overview")).click();
+
             // a new expense in the same category starts with the account used last time
             tap(By.res(packageName, "fab"));
             find(By.res(packageName, "amount"));

@@ -93,10 +93,14 @@ public class TransactionEditActivity extends BaseActivity {
     }
 
     /** Choices from the previous book, looked up by name in the new one. */
+    /** Why the account was set; only a default or a shop's account gives way to another shop's account. */
+    private enum AccountSource { DEFAULT, SHOP, CARD, GIVEN }
+
     private static final class Carried {
         String categoryName;
         String categoryParentName;
         Models.Account account;
+        AccountSource accountSource = AccountSource.DEFAULT;
         Models.Account destinationAccount;
         final List<String> tagNames = new ArrayList<>();
         String projectName;
@@ -129,6 +133,7 @@ public class TransactionEditActivity extends BaseActivity {
     private Models.Account account;
     private Models.Account destinationAccount;
     private boolean accountChosen;
+    private AccountSource accountSource = AccountSource.DEFAULT;
     private boolean destinationChosen;
     private final List<String> tagIds = new ArrayList<>();
     private String merchant = "";
@@ -546,6 +551,11 @@ public class TransactionEditActivity extends BaseActivity {
             account = findAccount(accountId);
             accountChosen = account != null;
 
+            if (account != null) {
+                // started from an account's page
+                accountSource = AccountSource.GIVEN;
+            }
+
             if (pending != null) {
                 applyPendingChoices();
             }
@@ -632,7 +642,7 @@ public class TransactionEditActivity extends BaseActivity {
         amountLayout.setHelperText(pending.currency.isEmpty() ? paid : getString(R.string.paid_in_currency, paid, Formats.amount(pending.amount, pending.currency)));
     }
 
-    /** The category used last time at this shop, and the account this card belongs to. */
+    /** The category used last time at this shop, and the account this card belongs to or else the one used at this shop. */
     private void applyPendingChoices() {
         if (category == null) {
             String categoryId = recent.categoryForMerchant(pending.merchant);
@@ -650,6 +660,7 @@ public class TransactionEditActivity extends BaseActivity {
             return;
         }
 
+        // the card Wallet names is what was actually used, so it comes before the shop
         Models.Account card = findAccount(recent.accountForCard(pending.cardKey));
 
         // an account named or noted with the card's last four digits, like "Visa 1234"
@@ -666,6 +677,35 @@ public class TransactionEditActivity extends BaseActivity {
         if (card != null) {
             account = card;
             accountChosen = true;
+            accountSource = AccountSource.CARD;
+            return;
+        }
+
+        Models.Account usedHere = findAccount(recent.accountForMerchant(pending.merchant));
+
+        if (usedHere != null) {
+            account = usedHere;
+            accountChosen = true;
+            accountSource = AccountSource.SHOP;
+        }
+    }
+
+    /**
+     * On a new transaction, a shop picks the account last used there, unless the account was picked by hand,
+     * came with the screen (an account's page) or is the card a Wallet purchase was paid with.
+     */
+    private void applyMerchantAccount() {
+        if (original != null || (accountSource != AccountSource.DEFAULT && accountSource != AccountSource.SHOP)) {
+            return;
+        }
+
+        Models.Account usedHere = findAccount(recent.accountForMerchant(merchant));
+
+        if (usedHere != null) {
+            account = usedHere;
+            accountChosen = true;
+            accountSource = AccountSource.SHOP;
+            accountLayout.setError(null);
         }
     }
 
@@ -933,6 +973,7 @@ public class TransactionEditActivity extends BaseActivity {
         }
 
         carried.account = account;
+        carried.accountSource = accountSource;
         carried.destinationAccount = destinationAccount;
 
         for (String tagId : tagIds) {
@@ -956,6 +997,7 @@ public class TransactionEditActivity extends BaseActivity {
         account = null;
         destinationAccount = null;
         accountChosen = false;
+        accountSource = AccountSource.DEFAULT;
         destinationChosen = false;
         tagIds.clear();
         merchants = new ArrayList<>();
@@ -1008,6 +1050,7 @@ public class TransactionEditActivity extends BaseActivity {
         if (sameAccount != null) {
             account = sameAccount;
             accountChosen = true;
+            accountSource = carried.accountSource;
         }
 
         Models.Account sameDestination = findCarriedAccount(carried.destinationAccount);
@@ -1198,6 +1241,7 @@ public class TransactionEditActivity extends BaseActivity {
             } else {
                 account = findAccount(choice.id);
                 accountChosen = true;
+                accountSource = AccountSource.GIVEN;
                 accountLayout.setError(null);
             }
 
@@ -1394,6 +1438,7 @@ public class TransactionEditActivity extends BaseActivity {
                 addMerchant();
             } else {
                 merchant = choice.id.isEmpty() ? "" : choice.id.substring(1);
+                applyMerchantAccount();
                 renderAll();
             }
         });
@@ -1433,6 +1478,7 @@ public class TransactionEditActivity extends BaseActivity {
                 }
 
                 merchant = name;
+                applyMerchantAccount();
                 renderAll();
             })
             .show()
@@ -1807,10 +1853,12 @@ public class TransactionEditActivity extends BaseActivity {
             @Override
             public void onSuccess(Object result) {
                 recent.remember(savedType, savedCategoryId, savedAccountId, savedDestinationId);
-                recent.rememberMerchant(savedMerchant, savedCategoryId);
+                recent.rememberMerchant(savedMerchant, savedCategoryId, savedAccountId);
 
                 if (pending != null) {
                     recent.rememberCard(pending.cardKey, savedAccountId);
+                    // Wallet keeps using its own name for the shop even if it was renamed here
+                    recent.rememberMerchant(pending.merchant, savedCategoryId, savedAccountId);
                     PendingPayments.remove(TransactionEditActivity.this, pending.id);
                 }
                 Ui.dataChanged();
