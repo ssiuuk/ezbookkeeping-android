@@ -299,6 +299,12 @@ public class ScreenshotTest {
         UiObject2 found = device.findObject(selector);
 
         for (int i = 0; i < 6 && (found == null || found.getVisibleBounds().height() < 20); i++) {
+            // the keyboard can open after hideKeyboard looked for it, and a swipe starting on it types instead of scrolling
+            if (device.hasObject(By.pkg("com.google.android.inputmethod.latin"))) {
+                device.pressBack();
+                device.waitForIdle();
+            }
+
             try {
                 scroll.scroll(Direction.DOWN, 0.6f);
             } catch (StaleObjectException e) {
