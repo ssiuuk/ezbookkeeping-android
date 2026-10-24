@@ -93,10 +93,14 @@ public class TransactionEditActivity extends BaseActivity {
     }
 
     /** Choices from the previous book, looked up by name in the new one. */
+    /** Why the account was set; only a default or a shop's account gives way to another shop's account. */
+    private enum AccountSource { DEFAULT, SHOP, CARD, GIVEN }
+
     private static final class Carried {
         String categoryName;
         String categoryParentName;
         Models.Account account;
+        AccountSource accountSource = AccountSource.DEFAULT;
         Models.Account destinationAccount;
         final List<String> tagNames = new ArrayList<>();
         String projectName;
@@ -129,8 +133,7 @@ public class TransactionEditActivity extends BaseActivity {
     private Models.Account account;
     private Models.Account destinationAccount;
     private boolean accountChosen;
-    // the account was picked by hand, so choosing a shop doesn't replace it
-    private boolean accountPicked;
+    private AccountSource accountSource = AccountSource.DEFAULT;
     private boolean destinationChosen;
     private final List<String> tagIds = new ArrayList<>();
     private String merchant = "";
@@ -548,6 +551,11 @@ public class TransactionEditActivity extends BaseActivity {
             account = findAccount(accountId);
             accountChosen = account != null;
 
+            if (account != null) {
+                // started from an account's page
+                accountSource = AccountSource.GIVEN;
+            }
+
             if (pending != null) {
                 applyPendingChoices();
             }
@@ -666,19 +674,28 @@ public class TransactionEditActivity extends BaseActivity {
             }
         }
 
-        if (card == null) {
-            card = findAccount(recent.accountForMerchant(pending.merchant));
-        }
-
         if (card != null) {
             account = card;
             accountChosen = true;
+            accountSource = AccountSource.CARD;
+            return;
+        }
+
+        Models.Account usedHere = findAccount(recent.accountForMerchant(pending.merchant));
+
+        if (usedHere != null) {
+            account = usedHere;
+            accountChosen = true;
+            accountSource = AccountSource.SHOP;
         }
     }
 
-    /** On a new transaction, a shop picks the account last used there, unless one was picked by hand. */
+    /**
+     * On a new transaction, a shop picks the account last used there, unless the account was picked by hand,
+     * came with the screen (an account's page) or is the card a Wallet purchase was paid with.
+     */
     private void applyMerchantAccount() {
-        if (original != null || accountPicked) {
+        if (original != null || (accountSource != AccountSource.DEFAULT && accountSource != AccountSource.SHOP)) {
             return;
         }
 
@@ -687,6 +704,7 @@ public class TransactionEditActivity extends BaseActivity {
         if (usedHere != null) {
             account = usedHere;
             accountChosen = true;
+            accountSource = AccountSource.SHOP;
             accountLayout.setError(null);
         }
     }
@@ -955,6 +973,7 @@ public class TransactionEditActivity extends BaseActivity {
         }
 
         carried.account = account;
+        carried.accountSource = accountSource;
         carried.destinationAccount = destinationAccount;
 
         for (String tagId : tagIds) {
@@ -978,7 +997,7 @@ public class TransactionEditActivity extends BaseActivity {
         account = null;
         destinationAccount = null;
         accountChosen = false;
-        accountPicked = false;
+        accountSource = AccountSource.DEFAULT;
         destinationChosen = false;
         tagIds.clear();
         merchants = new ArrayList<>();
@@ -1031,6 +1050,7 @@ public class TransactionEditActivity extends BaseActivity {
         if (sameAccount != null) {
             account = sameAccount;
             accountChosen = true;
+            accountSource = carried.accountSource;
         }
 
         Models.Account sameDestination = findCarriedAccount(carried.destinationAccount);
@@ -1221,7 +1241,7 @@ public class TransactionEditActivity extends BaseActivity {
             } else {
                 account = findAccount(choice.id);
                 accountChosen = true;
-                accountPicked = true;
+                accountSource = AccountSource.GIVEN;
                 accountLayout.setError(null);
             }
 
