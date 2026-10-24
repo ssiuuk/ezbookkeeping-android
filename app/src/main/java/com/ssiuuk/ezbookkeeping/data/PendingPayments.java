@@ -19,7 +19,8 @@ public final class PendingPayments {
     private static final String PREFERENCES = "pending_payments";
     private static final String KEY_ITEMS = "items";
     private static final int MAX_ITEMS = 100;
-    // Wallet sometimes updates its notification for the same purchase; don't list it twice
+    // Wallet sometimes updates its notification for the same purchase; don't list it twice.
+    // Only an update of the same notification counts, so two equal purchases in a row both stay.
     private static final long DUPLICATE_WINDOW = 5 * 60 * 1000;
 
     public static final class Item {
@@ -32,6 +33,7 @@ public final class PendingPayments {
         public String cardKey = "";
         public boolean refund;
         public String source = "";
+        public String notificationKey = "";
 
         JSONObject toJson() throws JSONException {
             return new JSONObject()
@@ -43,7 +45,8 @@ public final class PendingPayments {
                 .put("card", card)
                 .put("cardKey", cardKey)
                 .put("refund", refund)
-                .put("source", source);
+                .put("source", source)
+                .put("notificationKey", notificationKey);
         }
 
         static Item fromJson(JSONObject json) {
@@ -57,6 +60,7 @@ public final class PendingPayments {
             item.cardKey = json.optString("cardKey", "");
             item.refund = json.optBoolean("refund");
             item.source = json.optString("source", "");
+            item.notificationKey = json.optString("notificationKey", "");
             return item;
         }
     }
@@ -99,12 +103,16 @@ public final class PendingPayments {
         return null;
     }
 
-    /** Adds a purchase, unless the same one was just added. Returns the new item, or null for a repeat. */
-    public static synchronized Item add(Context context, PaymentNotification payment, long time, String source) {
+    /**
+     * Adds a purchase, unless it is an update of the notification it was just added from.
+     * Returns the new item, or null for a repeat.
+     */
+    public static synchronized Item add(Context context, PaymentNotification payment, long time, String source, String notificationKey) {
         List<Item> items = list(context);
+        String key = notificationKey == null ? "" : notificationKey;
 
         for (Item existing : items) {
-            if (existing.amount == payment.amount && existing.merchant.equals(payment.merchant)
+            if (!key.isEmpty() && existing.notificationKey.equals(key) && existing.amount == payment.amount && existing.merchant.equals(payment.merchant)
                 && existing.cardKey.equals(payment.cardKey()) && Math.abs(existing.time - time) < DUPLICATE_WINDOW) {
                 return null;
             }
@@ -120,6 +128,7 @@ public final class PendingPayments {
         item.cardKey = payment.cardKey();
         item.refund = payment.refund;
         item.source = source == null ? "" : source;
+        item.notificationKey = key;
         items.add(0, item);
 
         while (items.size() > MAX_ITEMS) {

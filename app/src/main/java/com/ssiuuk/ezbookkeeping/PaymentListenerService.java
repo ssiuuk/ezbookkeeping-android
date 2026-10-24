@@ -45,7 +45,7 @@ public class PaymentListenerService extends NotificationListenerService {
 
         PaymentNotification payment = PaymentNotification.parse(title == null ? null : title.toString(), text == null ? null : text.toString());
 
-        if (payment != null && PendingPayments.add(this, payment, notification.getPostTime(), notification.getPackageName()) != null) {
+        if (payment != null && PendingPayments.add(this, payment, notification.getPostTime(), notification.getPackageName(), notification.getKey()) != null) {
             Ui.dataChanged();
         }
     }

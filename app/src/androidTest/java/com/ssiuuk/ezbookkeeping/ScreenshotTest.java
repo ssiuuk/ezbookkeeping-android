@@ -161,7 +161,7 @@ public class ScreenshotTest {
             find(By.res(packageName, "category").textContains("Bakery"));
 
             // a Google Wallet purchase waits under To review, with the shop's last category and that category's account
-            PendingPayments.add(context, PaymentNotification.parse("Corner Café", "$18.20 with Visa •••• 1234"), System.currentTimeMillis(), "test");
+            PendingPayments.add(context, PaymentNotification.parse("Corner Café", "$18.20 with Visa •••• 1234"), System.currentTimeMillis(), "test", "test");
             backTo(By.res(packageName, "review_card"));
             find(By.text("1 purchase to review"));
             settle();
