@@ -112,6 +112,29 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/ezbookkeeping-android.apk" --clobber
 
+      # testers get each release through Firebase App Distribution once FIREBASE_APP_ID and FIREBASE_SERVICE_ACCOUNT are set
+      - name: Send to Firebase App Distribution
+        if: steps.release.outputs.tag != ''
+        env:
+          FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_TESTER_GROUPS: ${{ vars.FIREBASE_TESTER_GROUPS || 'testers' }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_NOTES: ${{ github.event.release.body }}
+        run: |
+          if [ -z "$FIREBASE_APP_ID" ] || [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::notice::FIREBASE_APP_ID or FIREBASE_SERVICE_ACCOUNT is not set, so the release is not sent to Firebase App Distribution"
+            exit 0
+          fi
+          echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase.json"
+          printf '%s\n' "${RELEASE_NOTES:-ezBookkeeping $RELEASE_TAG}" > "$RUNNER_TEMP/release-notes.txt"
+          npx --yes firebase-tools@13.29.1 appdistribution:distribute "$RUNNER_TEMP/ezbookkeeping-android.apk" \
+            --app "$FIREBASE_APP_ID" \
+            --groups "$FIREBASE_TESTER_GROUPS" \
+            --release-notes-file "$RUNNER_TEMP/release-notes.txt"
+          rm -f "$RUNNER_TEMP/firebase.json"
+
       - name: Publish to the android-preview release
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         env:

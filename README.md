@@ -30,6 +30,17 @@ base64 -w0 ezbookkeeping.jks   # on macOS: base64 -i ezbookkeeping.jks
 
 Then add these repository secrets under Settings > Secrets and variables > Actions: `ANDROID_KEYSTORE_BASE64` (the base64 text), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`ezbookkeeping`) and `ANDROID_KEY_PASSWORD`. Keep the `.jks` file somewhere safe and never commit it.
 
+## Testers through Firebase App Distribution
+
+Publishing a release also sends the app to Firebase App Distribution, so testers get an email and install updates from the Firebase App Tester app. To turn it on:
+
+1. In the [Firebase console](https://console.firebase.google.com), create a project and add an Android app with the package name `com.ssiuuk.ezbookkeeping`. Copy its App ID (`1:…:android:…`, under Project settings).
+2. Under Release & Monitor > App Distribution, click Get started, then under Testers & Groups create a group with the alias `testers` and add the testers' email addresses.
+3. In Google Cloud console > IAM & Admin > Service accounts (same project), create a service account with the **Firebase App Distribution Admin** role and download a JSON key for it.
+4. In this repository under Settings > Secrets and variables > Actions, add the secret `FIREBASE_SERVICE_ACCOUNT` (the whole JSON file) and the variable `FIREBASE_APP_ID`. To send to other groups, add the variable `FIREBASE_TESTER_GROUPS` with their aliases separated by commas.
+
+The release notes become the notes testers see. Until both settings exist the step is skipped.
+
 ## The server
 
 The app talks to an ezBookkeeping server over its web API. Family books, projects and merchants need the server from [ssiuuk/ezbookkeeping](https://github.com/ssiuuk/ezbookkeeping); with other servers those fields are hidden.
