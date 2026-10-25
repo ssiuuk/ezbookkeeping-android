@@ -75,6 +75,7 @@ public class TransactionEditActivity extends BaseActivity {
     private static final String EXTRA_ACCOUNT_ID = "account_id";
     private static final String EXTRA_PENDING_ID = "pending_id";
     private static final String EXTRA_TYPE = "type";
+    private static final String EXTRA_BOOK_ID = "book_id";
     private static final int MENU_DELETE = 1;
     private static final int MENU_DISMISS = 2;
     private static final int MAX_PHOTO_SIZE = 2048;
@@ -196,6 +197,11 @@ public class TransactionEditActivity extends BaseActivity {
         return new Intent(context, TransactionEditActivity.class).putExtra(EXTRA_TRANSACTION_ID, transactionId);
     }
 
+    /** Opens the screen in a given book instead of the app's: a shared book's id, or "" for the user's own book; null changes nothing. */
+    public static Intent inBook(Intent intent, String bookId) {
+        return bookId == null ? intent : intent.putExtra(EXTRA_BOOK_ID, bookId);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -230,7 +236,8 @@ public class TransactionEditActivity extends BaseActivity {
             }
         }
 
-        bookId = server.bookId;
+        String givenBook = getIntent().getStringExtra(EXTRA_BOOK_ID);
+        bookId = givenBook == null ? server.bookId : givenBook.isEmpty() ? null : givenBook;
         originalBookId = bookId;
         recent = new RecentChoices(this, server, bookId);
         setContentView(R.layout.activity_transaction_edit);

@@ -12,6 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.SizeF;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -31,11 +32,13 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Home screen widget: a period's spending, a few other figures, the latest transactions and quick ways to add one.
@@ -65,6 +68,8 @@ public class SpendingWidget extends AppWidgetProvider {
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final Runnable REFRESH_ALL = SpendingWidget::refreshAllNow;
+    /** The latest refresh of each widget; an answer to an older one is dropped. Only used on the main thread. */
+    private static final Map<Integer, Integer> GENERATIONS = new HashMap<>();
     private static Context appContext;
 
     /** What one widget shows, chosen in SpendingWidgetConfigureActivity. */
@@ -182,13 +187,10 @@ public class SpendingWidget extends AppWidgetProvider {
     /** Loads the periods' totals, exchange rates and latest transactions of the widget's book and keeps them for render. */
     private static void fetch(Context context, Server server, int widgetId, Runnable done) {
         Settings settings = Settings.load(context, widgetId);
-        Api api = new Api(server).inBackground();
-
-        if (BOOK_PERSONAL.equals(settings.book)) {
-            api.withBook(null);
-        } else if (!settings.book.isEmpty()) {
-            api.withBook(settings.book);
-        }
+        String book = resolvedBook(settings, server);
+        String identity = identity(server, book);
+        int generation = nextGeneration(widgetId);
+        Api api = new Api(server).inBackground().withBook(book);
 
         Context text = Languages.localized(context);
         String currency = server.getDefaultCurrency();
@@ -201,53 +203,17 @@ public class SpendingWidget extends AppWidgetProvider {
                 return;
             }
 
-            JSONObject data = loadData(context, widgetId);
+            if (!isLatest(widgetId, generation) || !identity.equals(currentIdentity(context, widgetId))) {
+                // a newer refresh is on its way, or the server, user or book changed while this one ran
+                done.run();
+                return;
+            }
 
             try {
-                if (data == null || !currency.equals(data.optString("currency"))) {
-                    data = new JSONObject().put("currency", currency);
-                }
-
-                if (results[0] != null) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Models.PeriodAmounts> amounts = (Map<String, Models.PeriodAmounts>) results[0];
-                    Models.ExchangeRates rates = results[1] != null ? (Models.ExchangeRates) results[1] : new Models.ExchangeRates();
-                    Set<String> unconverted = new HashSet<>();
-                    JSONObject totals = new JSONObject();
-
-                    for (String period : FETCHED_PERIODS) {
-                        Models.PeriodAmounts amount = amounts.get(period);
-                        long[] total = amount == null ? new long[] { 0, 0 } : amount.total(currency, rates, unconverted);
-                        totals.put(period, new JSONArray().put(total[0]).put(total[1]));
-                    }
-
-                    unconverted.remove(currency);
-                    data.put("totals", totals);
-                    data.put("unconverted", !unconverted.isEmpty());
-                }
-
-                if (results[2] != null) {
-                    JSONArray recent = new JSONArray();
-
-                    for (Models.Transaction transaction : ((Models.TransactionPage) results[2]).items) {
-                        recent.put(new JSONObject()
-                            .put("id", transaction.id)
-                            .put("type", transaction.type)
-                            .put("title", Ui.transactionTitle(text, transaction))
-                            .put("subtitle", Formats.dayHeader(text, transaction.time) + " · " + Ui.transactionSubtitle(text, transaction))
-                            .put("amount", Ui.transactionAmount(text, transaction)));
-                    }
-
-                    data.put("recent", recent);
-                }
-
-                if (error[0] == null) {
-                    data.put("updated", System.currentTimeMillis());
-                    data.remove("error");
-                } else {
-                    data.put("error", error[0]);
-                }
-
+                @SuppressWarnings("unchecked")
+                Map<String, Models.PeriodAmounts> amounts = (Map<String, Models.PeriodAmounts>) results[0];
+                JSONObject data = combine(text, loadData(context, widgetId), identity, currency, amounts,
+                    (Models.ExchangeRates) results[1], (Models.TransactionPage) results[2], error[0], System.currentTimeMillis());
                 prefs(context).edit().putString(widgetId + ".data", data.toString()).apply();
             } catch (JSONException ex) {
                 // keep the figures already shown
@@ -280,7 +246,7 @@ public class SpendingWidget extends AppWidgetProvider {
 
             @Override
             public void onError(ApiException ex) {
-                // without rates, only the default currency is counted
+                // without rates, only the default currency is counted, and the others are named as left out
                 finished.run();
             }
         });
@@ -299,6 +265,98 @@ public class SpendingWidget extends AppWidgetProvider {
                     finished.run();
                 }
             });
+    }
+
+    static int nextGeneration(int widgetId) {
+        Integer last = GENERATIONS.get(widgetId);
+        int generation = last == null ? 1 : last + 1;
+        GENERATIONS.put(widgetId, generation);
+        return generation;
+    }
+
+    static boolean isLatest(int widgetId, int generation) {
+        Integer last = GENERATIONS.get(widgetId);
+        return last != null && last == generation;
+    }
+
+    /**
+     * What a widget keeps after a refresh: the new totals and transactions, or the earlier ones where a request failed,
+     * as long as those were for the same server, user, book and currency. Null amounts, rates or page mean that request failed.
+     */
+    static JSONObject combine(Context text, JSONObject old, String identity, String currency, Map<String, Models.PeriodAmounts> amounts,
+                              Models.ExchangeRates rates, Models.TransactionPage page, String error, long now) throws JSONException {
+        JSONObject data = old;
+
+        if (data == null || !currency.equals(data.optString("currency")) || !identity.equals(data.optString("identity"))) {
+            data = new JSONObject().put("currency", currency).put("identity", identity);
+        }
+
+        if (amounts != null) {
+            // without a rate (or without any rates when that request failed) a currency is left out of the totals, and the widget names it
+            Models.ExchangeRates usedRates = rates != null ? rates : new Models.ExchangeRates();
+            Set<String> unconverted = new TreeSet<>();
+            JSONObject totals = new JSONObject();
+
+            for (String period : FETCHED_PERIODS) {
+                Models.PeriodAmounts amount = amounts.get(period);
+                long[] total = amount == null ? new long[] { 0, 0 } : amount.total(currency, usedRates, unconverted);
+                totals.put(period, new JSONArray().put(total[0]).put(total[1]));
+            }
+
+            unconverted.remove(currency);
+            data.put("totals", totals);
+            data.put("unconverted", new JSONArray(unconverted));
+        }
+
+        if (page != null) {
+            JSONArray recent = new JSONArray();
+
+            for (Models.Transaction transaction : page.items) {
+                recent.put(new JSONObject()
+                    .put("id", transaction.id)
+                    .put("type", transaction.type)
+                    .put("title", Ui.transactionTitle(text, transaction))
+                    .put("subtitle", Formats.dayHeader(text, transaction.time) + " · " + Ui.transactionSubtitle(text, transaction))
+                    .put("amount", Ui.transactionAmount(text, transaction)));
+            }
+
+            data.put("recent", recent);
+        }
+
+        if (error == null) {
+            data.put("updated", now);
+            data.remove("error");
+        } else {
+            data.put("error", error);
+        }
+
+        return data;
+    }
+
+    /** The kept figures if they belong to this server, user and book, otherwise null. */
+    static JSONObject shownData(JSONObject data, Server server, String book) {
+        return data != null && identity(server, book).equals(data.optString("identity")) ? data : null;
+    }
+
+    /** The widget's heading: the period, the book when it isn't the user's own, and the currencies left out of the totals. */
+    static String heading(Context text, Settings settings, Server server, JSONObject data) {
+        String label = periodName(text, settings.period);
+        String name = bookName(text, settings, server);
+        label = name == null ? label : label + " · " + name;
+        JSONArray unconverted = data == null ? null : data.optJSONArray("unconverted");
+
+        if (unconverted != null && unconverted.length() > 0) {
+            // like the Overview: amounts in these currencies couldn't be converted, so the totals leave them out
+            List<String> currencies = new ArrayList<>();
+
+            for (int i = 0; i < unconverted.length(); i++) {
+                currencies.add(unconverted.optString(i));
+            }
+
+            label += " · " + text.getString(R.string.other_currencies, TextUtils.join(", ", currencies));
+        }
+
+        return label;
     }
 
     static void render(Context context, int widgetId) {
@@ -332,7 +390,10 @@ public class SpendingWidget extends AppWidgetProvider {
         Settings settings = Settings.load(context, widgetId);
         Server server = ServerStore.get(context).getActiveServer();
         boolean signedIn = server != null && server.isSignedIn();
-        JSONObject data = signedIn ? loadData(context, widgetId) : null;
+        String book = signedIn ? resolvedBook(settings, server) : null;
+        // figures kept for another server, user or book aren't shown; this one's arrive with the next refresh
+        JSONObject data = signedIn ? shownData(loadData(context, widgetId), server, book) : null;
+
         JSONObject totals = data == null ? null : data.optJSONObject("totals");
         String currency = data == null ? null : data.optString("currency");
         // shown until the first figures arrive, or when they couldn't be loaded
@@ -342,7 +403,7 @@ public class SpendingWidget extends AppWidgetProvider {
 
         RemoteViews views = new RemoteViews(packageName, oneRow ? R.layout.widget_small : R.layout.widget_full);
         views.setOnClickPendingIntent(R.id.summary, launch(context, widgetId, 0, new Intent(Intent.ACTION_MAIN)));
-        views.setOnClickPendingIntent(R.id.add, launch(context, widgetId, 1, addIntent(Models.TRANSACTION_EXPENSE)));
+        views.setOnClickPendingIntent(R.id.add, launch(context, widgetId, 1, addIntent(Models.TRANSACTION_EXPENSE, book)));
         views.setContentDescription(R.id.add, text.getString(R.string.add_transaction));
 
         if (!signedIn) {
@@ -359,9 +420,7 @@ public class SpendingWidget extends AppWidgetProvider {
             return views;
         }
 
-        String label = periodName(text, settings.period);
-        String book = bookName(text, settings, server);
-        views.setTextViewText(R.id.label, book == null ? label : label + " · " + book);
+        views.setTextViewText(R.id.label, heading(text, settings, server, data));
         views.setTextViewText(R.id.spent, totals == null ? missing : money(text, settings, expense(totals, settings.period), currency));
 
         if (oneRow) {
@@ -395,7 +454,8 @@ public class SpendingWidget extends AppWidgetProvider {
             row.setTextViewText(R.id.amount, settings.hideAmounts ? text.getString(R.string.hidden_amount) : item.optString("amount"));
             setAmountColor(context, row, item.optInt("type"));
 
-            Intent edit = new Intent(LaunchActivity.ACTION_EDIT_TRANSACTION).putExtra(LaunchActivity.EXTRA_TRANSACTION_ID, item.optString("id"));
+            Intent edit = new Intent(LaunchActivity.ACTION_EDIT_TRANSACTION).putExtra(LaunchActivity.EXTRA_TRANSACTION_ID, item.optString("id"))
+                .putExtra(LaunchActivity.EXTRA_BOOK_ID, book == null ? "" : book);
             row.setOnClickPendingIntent(R.id.row, launch(context, widgetId, 8 + i, edit));
             views.addView(R.id.recent_list, row);
         }
@@ -406,9 +466,9 @@ public class SpendingWidget extends AppWidgetProvider {
 
         if (footer) {
             views.setTextViewText(R.id.add_income, text.getString(R.string.income));
-            views.setOnClickPendingIntent(R.id.add_income, launch(context, widgetId, 2, addIntent(Models.TRANSACTION_INCOME)));
+            views.setOnClickPendingIntent(R.id.add_income, launch(context, widgetId, 2, addIntent(Models.TRANSACTION_INCOME, book)));
             views.setTextViewText(R.id.add_transfer, text.getString(R.string.transfer));
-            views.setOnClickPendingIntent(R.id.add_transfer, launch(context, widgetId, 3, addIntent(Models.TRANSACTION_TRANSFER)));
+            views.setOnClickPendingIntent(R.id.add_transfer, launch(context, widgetId, 3, addIntent(Models.TRANSACTION_TRANSFER, book)));
 
             // Wallet purchases waiting on the Overview
             List<PendingPayments.Item> pending = PendingPayments.list(context);
@@ -496,8 +556,29 @@ public class SpendingWidget extends AppWidgetProvider {
         return settings.hideAmounts ? context.getString(R.string.hidden_amount) : Formats.amount(amount, currency);
     }
 
-    private static Intent addIntent(int type) {
-        return new Intent(LaunchActivity.ACTION_ADD_TRANSACTION).putExtra(LaunchActivity.EXTRA_TYPE, type);
+    /** Adds to the widget's book, which may not be the one chosen in the app. */
+    private static Intent addIntent(int type, String book) {
+        return new Intent(LaunchActivity.ACTION_ADD_TRANSACTION).putExtra(LaunchActivity.EXTRA_TYPE, type)
+            .putExtra(LaunchActivity.EXTRA_BOOK_ID, book == null ? "" : book);
+    }
+
+    /** The book the widget shows: a shared book's id, or null for the user's own book. */
+    static String resolvedBook(Settings settings, Server server) {
+        if (settings.book.isEmpty()) {
+            return server.bookId;
+        }
+
+        return BOOK_PERSONAL.equals(settings.book) ? null : settings.book;
+    }
+
+    /** Whose figures these are: the server, the user signed in to it and the book. */
+    static String identity(Server server, String book) {
+        return server.id + "\n" + server.getUser().optString("username", "") + "\n" + (book == null ? "" : book);
+    }
+
+    private static String currentIdentity(Context context, int widgetId) {
+        Server server = ServerStore.get(context).getActiveServer();
+        return server == null || !server.isSignedIn() ? null : identity(server, resolvedBook(Settings.load(context, widgetId), server));
     }
 
     /** Opens the app through LaunchActivity, which signs in or picks a server first when needed. */
