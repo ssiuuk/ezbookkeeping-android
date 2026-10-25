@@ -9,4 +9,10 @@
     <plurals name="widget_review_count">
         <item quantity="other">รอตรวจสอบ %d</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="other">การเปลี่ยนแปลง %d รายการยังไม่อยู่บนเซิร์ฟเวอร์</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="other">การเปลี่ยนแปลง %d รายการที่ทำในโทรศัพท์นี้ยังไม่ถึงเซิร์ฟเวอร์นี้ และจะหายไป</item>
+    </plurals>
 </resources>

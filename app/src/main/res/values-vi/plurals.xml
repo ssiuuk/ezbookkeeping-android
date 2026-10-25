@@ -9,4 +9,10 @@
     <plurals name="widget_review_count">
         <item quantity="other">%d cần xem xét</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="other">%d thay đổi chưa có trên máy chủ</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="other">%d thay đổi trên điện thoại này chưa đến máy chủ này và sẽ bị mất.</item>
+    </plurals>
 </resources>

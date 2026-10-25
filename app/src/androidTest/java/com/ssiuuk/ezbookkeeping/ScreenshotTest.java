@@ -249,17 +249,52 @@ public class ScreenshotTest {
                 throw new AssertionError("The moved transaction is still in my book");
             }
 
+            // without a connection a new entry is kept on the phone and listed as waiting, next to what the server last showed
+            setNetwork(false);
+
+            try {
+                tap(By.res(packageName, "fab"));
+                find(By.res(packageName, "amount"));
+                type(By.res(packageName, "amount"), "4.80");
+                hideKeyboard();
+                tap(By.res(packageName, "category"));
+                tap(By.text("Restaurants"));
+                scrollTo(By.res(packageName, "comment")).setText("Coffee on the train");
+                hideKeyboard();
+                scrollTo(By.res(packageName, "save_button")).click();
+                find(By.res(packageName, "offline_note"));
+                find(By.res(packageName, "sync_list").hasDescendant(By.textContains("Coffee on the train")));
+                settle();
+                shot("21-offline-entry");
+            } finally {
+                setNetwork(true);
+            }
+
+            // once the server can be reached again the entry is sent by itself and the waiting card goes
+            if (!device.wait(Until.gone(By.res(packageName, "sync_card")), 90000)) {
+                throw new AssertionError("The entry saved offline was not sent when the connection came back");
+            }
+
+            find(By.res(packageName, "recent_list").hasDescendant(By.textContains("Coffee on the train")));
+
+            if (device.hasObject(By.res(packageName, "offline_note"))) {
+                throw new AssertionError("The offline note is still showing after the connection came back");
+            }
+
+            settle();
+            shot("22-offline-entry-sent");
+
             // the app in Simplified Chinese, chosen in its own settings
             tap(By.res(packageName, "action_settings"));
             tap(By.text("Language"));
             scrollDialogTo(By.text("简体中文")).click();
             find(By.text("语言"));
             settle();
-            shot("21-settings-chinese");
+            shot("23-settings-chinese");
             backTo(By.res(packageName, "nav_overview")).click();
             find(By.text("本月"));
             settle();
-            shot("22-overview-chinese");
+            shot("24-overview-chinese");
 
             // the Spending widget on the home screen, added at its default size of four columns by two rows
             AppWidgetManager widgets = AppWidgetManager.getInstance(context);
@@ -274,7 +309,7 @@ public class ScreenshotTest {
                 // two rows tall, so the launcher must pick the layout with the other figures, not the one-row one
                 find(By.res(packageName, "stat1"));
                 settle();
-                shot("23-widget");
+                shot("25-widget");
             }
         } catch (Throwable error) {
             shot("99-failure");
@@ -282,6 +317,13 @@ public class ScreenshotTest {
             device.executeShellCommand("cp " + new File(context.getExternalCacheDir(), "hierarchy.xml").getAbsolutePath() + " " + SCREENS + "/99-hierarchy.xml");
             throw error;
         }
+    }
+
+    /** Turns Wi-Fi and mobile data off or on, as when the phone loses its connection. */
+    private void setNetwork(boolean on) throws IOException, InterruptedException {
+        device.executeShellCommand("svc wifi " + (on ? "enable" : "disable"));
+        device.executeShellCommand("svc data " + (on ? "enable" : "disable"));
+        Thread.sleep(3000);
     }
 
     /** Presses back until the selector shows, since the first press may only close the keyboard. */

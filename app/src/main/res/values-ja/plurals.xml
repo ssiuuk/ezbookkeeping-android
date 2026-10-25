@@ -9,4 +9,10 @@
     <plurals name="widget_review_count">
         <item quantity="other">確認待ち %d 件</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="other">サーバー未送信の変更 %d 件</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="other">この端末で行った %d 件の変更はまだこのサーバーに届いておらず、失われます。</item>
+    </plurals>
 </resources>

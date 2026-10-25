@@ -12,4 +12,12 @@
         <item quantity="one">சரிபார்க்க %d</item>
         <item quantity="other">சரிபார்க்க %d</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="one">%d மாற்றம் இன்னும் சேவையகத்தில் இல்லை</item>
+        <item quantity="other">%d மாற்றங்கள் இன்னும் சேவையகத்தில் இல்லை</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="one">இந்தத் தொலைபேசியில் செய்த %d மாற்றம் இன்னும் இந்தச் சேவையகத்தை அடையவில்லை, அது இழக்கப்படும்.</item>
+        <item quantity="other">இந்தத் தொலைபேசியில் செய்த %d மாற்றங்கள் இன்னும் இந்தச் சேவையகத்தை அடையவில்லை, அவை இழக்கப்படும்.</item>
+    </plurals>
 </resources>

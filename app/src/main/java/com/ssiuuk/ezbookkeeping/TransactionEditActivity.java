@@ -24,6 +24,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
@@ -47,11 +48,13 @@ import com.google.android.material.timepicker.TimeFormat;
 import com.ssiuuk.ezbookkeeping.data.Api;
 import com.ssiuuk.ezbookkeeping.data.ApiException;
 import com.ssiuuk.ezbookkeeping.data.Formats;
+import com.ssiuuk.ezbookkeeping.data.LocalStore;
 import com.ssiuuk.ezbookkeeping.data.Models;
 import com.ssiuuk.ezbookkeeping.data.PendingPayments;
 import com.ssiuuk.ezbookkeeping.data.RecentChoices;
 import com.ssiuuk.ezbookkeeping.data.Server;
 import com.ssiuuk.ezbookkeeping.data.ServerStore;
+import com.ssiuuk.ezbookkeeping.data.Sync;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -75,6 +78,7 @@ public class TransactionEditActivity extends BaseActivity {
     private static final String EXTRA_ACCOUNT_ID = "account_id";
     private static final String EXTRA_PENDING_ID = "pending_id";
     private static final String EXTRA_TYPE = "type";
+    private static final String EXTRA_CHANGE_ID = "change_id";
     private static final int MENU_DELETE = 1;
     private static final int MENU_DISMISS = 2;
     private static final int MAX_PHOTO_SIZE = 2048;
@@ -111,6 +115,8 @@ public class TransactionEditActivity extends BaseActivity {
     private String transactionId;
     private Models.Transaction original;
     private boolean originalApplied;
+    /** A change saved on this phone and not sent yet, which this screen edits instead of the server's version. */
+    private LocalStore.Change queued;
 
     private String bookId;
     /** The book an existing transaction is in; saving it in another book moves it there. */
@@ -196,6 +202,11 @@ public class TransactionEditActivity extends BaseActivity {
         return new Intent(context, TransactionEditActivity.class).putExtra(EXTRA_TRANSACTION_ID, transactionId);
     }
 
+    /** Opens a transaction saved on this phone that the server hasn't taken yet. */
+    public static Intent queuedIntent(Context context, long changeId) {
+        return new Intent(context, TransactionEditActivity.class).putExtra(EXTRA_CHANGE_ID, changeId);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -230,7 +241,29 @@ public class TransactionEditActivity extends BaseActivity {
             }
         }
 
-        bookId = server.bookId;
+        long changeId = getIntent().getLongExtra(EXTRA_CHANGE_ID, 0);
+        queued = changeId != 0 ? LocalStore.get(this).change(changeId)
+            : transactionId != null ? LocalStore.get(this).changeFor(server.id, transactionId) : null;
+
+        if (changeId != 0 && queued == null) {
+            // sent meanwhile
+            finish();
+            return;
+        }
+
+        if (queued != null && LocalStore.KIND_DELETE.equals(queued.kind)) {
+            // deleted on this phone: show the server's version, and saving it takes the place of the deletion
+            queued = null;
+        }
+
+        if (queued != null) {
+            // the version saved on this phone, newer than the server's
+            transactionId = queued.transactionId;
+            original = Models.Transaction.parse(queued.body);
+            original.id = queued.transactionId;
+        }
+
+        bookId = queued != null ? queued.bookId : server.bookId;
         originalBookId = bookId;
         recent = new RecentChoices(this, server, bookId);
         setContentView(R.layout.activity_transaction_edit);
@@ -351,7 +384,7 @@ public class TransactionEditActivity extends BaseActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        if (transactionId != null) {
+        if (transactionId != null || queued != null) {
             MenuItem delete = menu.add(0, MENU_DELETE, 0, R.string.delete);
             delete.setIcon(R.drawable.ic_delete);
             delete.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
@@ -756,7 +789,8 @@ public class TransactionEditActivity extends BaseActivity {
 
     private void renderAll() {
         boolean transfer = type == Models.TRANSACTION_TRANSFER;
-        boolean canChooseBook = books.size() > 1;
+        // a transaction waiting on this phone stays in its book until the server has it
+        boolean canChooseBook = books.size() > 1 && queued == null;
         bookLayout.setVisibility(canChooseBook ? View.VISIBLE : View.GONE);
         bookInput.setText(bookLabel(findBook(bookId)));
 
@@ -1810,15 +1844,25 @@ public class TransactionEditActivity extends BaseActivity {
             }
         }
 
+        if (queued != null && photos.isEmpty()) {
+            // photos of a transaction waiting on this phone aren't shown, but stay with it
+            JSONArray queuedPictures = queued.body.optJSONArray("pictureIds");
+
+            for (int i = 0; queuedPictures != null && i < queuedPictures.length(); i++) {
+                pictureIds.add(queuedPictures.optString(i));
+            }
+        }
+
         JSONObject body = new JSONObject();
 
         boolean moving = original != null && !TextUtils.equals(bookId, originalBookId);
 
         try {
-            if (original != null && !moving) {
+            if (original != null && !moving && original.id != null) {
                 body.put("id", original.id);
             } else {
-                body.put("clientSessionId", clientSessionId);
+                // the same id each time this new transaction is sent, so the server can tell a repeat
+                body.put("clientSessionId", queued != null ? queued.body.optString("clientSessionId", clientSessionId) : clientSessionId);
             }
 
             body.put("type", type);
@@ -1846,42 +1890,88 @@ public class TransactionEditActivity extends BaseActivity {
             return;
         }
 
+        if (moving && !Sync.hasNetwork(this)) {
+            showMessage(getString(R.string.move_needs_connection));
+            return;
+        }
+
         saving = true;
         setBusy(true);
-        String savedCategoryId = category.id;
-        String savedAccountId = account.id;
-        String savedMerchant = merchant;
-        String savedDestinationId = type == Models.TRANSACTION_TRANSFER ? destinationAccount.id : null;
-        int savedType = type;
 
         if (moving) {
             moveToBook(body);
             return;
         }
 
+        if (queued != null || !Sync.hasNetwork(this)) {
+            saveOnPhone(body);
+            return;
+        }
+
         api().post(original == null ? "v1/transactions/add.json" : "v1/transactions/modify.json", body, null, new Api.Callback<Object>() {
             @Override
             public void onSuccess(Object result) {
-                recent.remember(savedType, savedCategoryId, savedAccountId, savedDestinationId);
-                recent.rememberMerchant(savedMerchant, savedCategoryId, savedAccountId);
-
-                if (pending != null) {
-                    recent.rememberCard(pending.cardKey, savedAccountId);
-                    // Wallet keeps using its own name for the shop even if it was renamed here
-                    recent.rememberMerchant(pending.merchant, savedCategoryId, savedAccountId);
-                    PendingPayments.remove(TransactionEditActivity.this, pending.id);
-                }
+                rememberChoices();
                 Ui.dataChanged(getApplicationContext());
                 finish();
             }
 
             @Override
             public void onError(ApiException error) {
+                if (error.unreachable) {
+                    saveOnPhone(body);
+                    return;
+                }
+
                 saving = false;
                 setBusy(false);
                 showMessage(error.getMessage());
             }
         });
+    }
+
+    private void rememberChoices() {
+        String destinationId = type == Models.TRANSACTION_TRANSFER && destinationAccount != null ? destinationAccount.id : null;
+        recent.remember(type, category.id, account.id, destinationId);
+        recent.rememberMerchant(merchant, category.id, account.id);
+
+        if (pending != null) {
+            recent.rememberCard(pending.cardKey, account.id);
+            // Wallet keeps using its own name for the shop even if it was renamed here
+            recent.rememberMerchant(pending.merchant, category.id, account.id);
+            PendingPayments.remove(this, pending.id);
+        }
+    }
+
+    /** Keeps the transaction on this phone while the server can't be reached; it is sent once it answers again. */
+    private void saveOnPhone(JSONObject body) {
+        JSONObject labels = ChangeViews.labels(category, account, type == Models.TRANSACTION_TRANSFER ? destinationAccount : null);
+
+        if (queued != null) {
+            queued.body = body;
+            queued.labels = labels;
+            queued.state = LocalStore.STATE_WAITING;
+            queued.message = null;
+            queued.attempts = 0;
+            LocalStore.get(this).save(queued);
+            Sync.schedule(this);
+        } else {
+            Sync.queue(this, server, bookId, original == null ? LocalStore.KIND_ADD : LocalStore.KIND_MODIFY,
+                original == null ? null : original.id, body, original == null ? null : original.json, labels);
+        }
+
+        rememberChoices();
+        Toast.makeText(getApplicationContext(), getString(R.string.saved_on_phone), Toast.LENGTH_LONG).show();
+        Ui.dataChanged(getApplicationContext());
+        finish();
+    }
+
+    private void deleteOnPhone(JSONObject body) {
+        Sync.queue(this, server, originalBookId, LocalStore.KIND_DELETE, original.id, body, original.json,
+            ChangeViews.labels(category, account, destinationAccount));
+        Toast.makeText(getApplicationContext(), getString(R.string.deleted_on_phone), Toast.LENGTH_LONG).show();
+        Ui.dataChanged(getApplicationContext());
+        finish();
     }
 
     /** Moves the transaction in one step on servers that can, or by adding it to the new book and deleting the old one. */
@@ -1973,6 +2063,15 @@ public class TransactionEditActivity extends BaseActivity {
             return;
         }
 
+        if (queued != null) {
+            new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.delete_transaction_title)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.delete, (dialog, which) -> deleteQueued())
+                .show();
+            return;
+        }
+
         new MaterialAlertDialogBuilder(this)
             .setTitle(R.string.delete_transaction_title)
             .setMessage(R.string.delete_transaction_message)
@@ -1986,6 +2085,11 @@ public class TransactionEditActivity extends BaseActivity {
                     return;
                 }
 
+                if (!Sync.hasNetwork(this)) {
+                    deleteOnPhone(body);
+                    return;
+                }
+
                 setBusy(true);
                 originalBookApi().post("v1/transactions/delete.json", body, null, new Api.Callback<Object>() {
                     @Override
@@ -1996,12 +2100,42 @@ public class TransactionEditActivity extends BaseActivity {
 
                     @Override
                     public void onError(ApiException error) {
+                        if (error.unreachable) {
+                            deleteOnPhone(body);
+                            return;
+                        }
+
                         setBusy(false);
                         showMessage(error.getMessage());
                     }
                 });
             })
             .show();
+    }
+
+    /** A transaction added on this phone is simply dropped; one the server has is deleted there once it can be reached. */
+    private void deleteQueued() {
+        if (LocalStore.KIND_ADD.equals(queued.kind)) {
+            LocalStore.get(this).remove(queued.id);
+        } else {
+            JSONObject body = new JSONObject();
+
+            try {
+                body.put("id", queued.transactionId);
+            } catch (JSONException ex) {
+                return;
+            }
+
+            queued.kind = LocalStore.KIND_DELETE;
+            queued.body = body;
+            queued.state = LocalStore.STATE_WAITING;
+            queued.message = null;
+            LocalStore.get(this).save(queued);
+            Sync.schedule(this);
+        }
+
+        Ui.dataChanged(getApplicationContext());
+        finish();
     }
 
     private void setBusy(boolean busy) {

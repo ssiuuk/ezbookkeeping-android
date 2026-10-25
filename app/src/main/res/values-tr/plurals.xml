@@ -12,4 +12,12 @@
         <item quantity="one">%d incelenecek</item>
         <item quantity="other">%d incelenecek</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="one">%d değişiklik henüz sunucuda değil</item>
+        <item quantity="other">%d değişiklik henüz sunucuda değil</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="one">Bu telefonda yapılan %d değişiklik henüz bu sunucuya ulaşmadı ve kaybolacak.</item>
+        <item quantity="other">Bu telefonda yapılan %d değişiklik henüz bu sunucuya ulaşmadı ve kaybolacak.</item>
+    </plurals>
 </resources>

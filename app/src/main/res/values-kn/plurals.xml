@@ -12,4 +12,12 @@
         <item quantity="one">ಪರಿಶೀಲಿಸಲು %d</item>
         <item quantity="other">ಪರಿಶೀಲಿಸಲು %d</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="one">%d ಬದಲಾವಣೆ ಇನ್ನೂ ಸರ್ವರ್‌ನಲ್ಲಿಲ್ಲ</item>
+        <item quantity="other">%d ಬದಲಾವಣೆಗಳು ಇನ್ನೂ ಸರ್ವರ್‌ನಲ್ಲಿಲ್ಲ</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="one">ಈ ಫೋನ್‌ನಲ್ಲಿ ಮಾಡಿದ %d ಬದಲಾವಣೆ ಇನ್ನೂ ಈ ಸರ್ವರ್ ತಲುಪಿಲ್ಲ ಮತ್ತು ಕಳೆದುಹೋಗುತ್ತದೆ.</item>
+        <item quantity="other">ಈ ಫೋನ್‌ನಲ್ಲಿ ಮಾಡಿದ %d ಬದಲಾವಣೆಗಳು ಇನ್ನೂ ಈ ಸರ್ವರ್ ತಲುಪಿಲ್ಲ ಮತ್ತು ಕಳೆದುಹೋಗುತ್ತವೆ.</item>
+    </plurals>
 </resources>

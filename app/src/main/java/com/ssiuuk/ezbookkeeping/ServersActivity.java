@@ -24,6 +24,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.ssiuuk.ezbookkeeping.data.Api;
 import com.ssiuuk.ezbookkeeping.data.ApiException;
+import com.ssiuuk.ezbookkeeping.data.LocalStore;
 import com.ssiuuk.ezbookkeeping.data.Server;
 import com.ssiuuk.ezbookkeeping.data.ServerStore;
 
@@ -177,9 +178,16 @@ public class ServersActivity extends BaseActivity {
     }
 
     private void confirmRemove(Server server) {
+        String message = getString(R.string.remove_server_message, server.getDisplayName());
+        int unsent = LocalStore.get(this).changes(server.id).size();
+
+        if (unsent > 0) {
+            message += "\n\n" + getResources().getQuantityString(R.plurals.remove_server_unsent, unsent, unsent);
+        }
+
         new MaterialAlertDialogBuilder(this)
             .setTitle(R.string.remove_server_title)
-            .setMessage(getString(R.string.remove_server_message, server.getDisplayName()))
+            .setMessage(message)
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.remove, (dialog, which) -> {
                 boolean wasActive = server == store.getActiveServer();

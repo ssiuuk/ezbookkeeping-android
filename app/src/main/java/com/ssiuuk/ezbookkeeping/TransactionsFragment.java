@@ -154,6 +154,15 @@ public class TransactionsFragment extends Fragment implements Reloadable {
             }
 
             @Override
+            public void onCached(Models.TransactionPage page, long savedAt) {
+                onSuccess(page);
+
+                if (reset && thisRequest == requestId && isAdded()) {
+                    Snackbar.make(refresh, getString(R.string.offline_list, Ui.savedAt(requireContext(), savedAt)), Snackbar.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
             public void onError(ApiException error) {
                 if (thisRequest != requestId || !isAdded()) {
                     return;

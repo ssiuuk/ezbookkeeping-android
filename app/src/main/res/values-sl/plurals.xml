@@ -18,4 +18,16 @@
         <item quantity="few">%d za pregled</item>
         <item quantity="other">%d za pregled</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="one">%d sprememba še ni na strežniku</item>
+        <item quantity="two">%d spremembi še nista na strežniku</item>
+        <item quantity="few">%d spremembe še niso na strežniku</item>
+        <item quantity="other">%d sprememb še ni na strežniku</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="one">%d sprememba s tega telefona še ni prišla na ta strežnik in bo izgubljena.</item>
+        <item quantity="two">%d spremembi s tega telefona še nista prišli na ta strežnik in bosta izgubljeni.</item>
+        <item quantity="few">%d spremembe s tega telefona še niso prišle na ta strežnik in bodo izgubljene.</item>
+        <item quantity="other">%d sprememb s tega telefona še ni prišlo na ta strežnik in bodo izgubljene.</item>
+    </plurals>
 </resources>

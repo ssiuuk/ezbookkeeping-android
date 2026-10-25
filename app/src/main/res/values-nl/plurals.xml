@@ -12,4 +12,12 @@
         <item quantity="one">%d te controleren</item>
         <item quantity="other">%d te controleren</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="one">%d wijziging nog niet op de server</item>
+        <item quantity="other">%d wijzigingen nog niet op de server</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="one">%d wijziging op deze telefoon is nog niet op deze server en gaat verloren.</item>
+        <item quantity="other">%d wijzigingen op deze telefoon zijn nog niet op deze server en gaan verloren.</item>
+    </plurals>
 </resources>

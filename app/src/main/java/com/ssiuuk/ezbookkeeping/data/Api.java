@@ -38,6 +38,11 @@ public final class Api {
         void onSuccess(T result);
 
         void onError(ApiException error);
+
+        /** The server couldn't be reached, and this is what it answered when it last could. */
+        default void onCached(T result, long savedAt) {
+            onSuccess(result);
+        }
     }
 
     /** Lets the app react once when the server no longer accepts the saved sign-in. */
@@ -54,6 +59,7 @@ public final class Api {
     private boolean bookOverridden;
     private String bookOverride;
     private boolean background;
+    private String cacheKey;
 
     public Api(Server server) {
         this.server = server;
@@ -93,6 +99,12 @@ public final class Api {
         return this;
     }
 
+    /** Keeps the answer under this name instead of its address, for queries that change with the day. */
+    public Api cacheAs(String key) {
+        cacheKey = key;
+        return this;
+    }
+
     public Server getServer() {
         return server;
     }
@@ -128,7 +140,90 @@ public final class Api {
             fullPath = builder.toString();
         }
 
-        enqueue("GET", fullPath, null, parser, callback);
+        String requestPath = fullPath;
+        String cachePath = cacheKey != null ? cacheKey : fullPath;
+
+        EXECUTOR.execute(() -> {
+            try {
+                Object result = execute("GET", requestPath, null);
+                T parsed = parser == null ? null : parser.parse(result);
+                storeAnswer(cachePath, result);
+                MAIN.post(() -> callback.onSuccess(parsed));
+            } catch (ApiException ex) {
+                if (ex.unreachable && answerFromCache(cachePath, parser, callback)) {
+                    return;
+                }
+
+                if (ex.isUnauthorized() && tokenOverride == null && !background && unauthorizedListener != null) {
+                    MAIN.post(() -> unauthorizedListener.onUnauthorized(server));
+                }
+
+                MAIN.post(() -> callback.onError(ex));
+            } catch (JSONException ex) {
+                ApiException error = new ApiException(0, 0, text(R.string.error_unexpected_response));
+                MAIN.post(() -> callback.onError(error));
+            }
+        });
+    }
+
+    /** Keeps the server's answer on the phone, to show while the server can't be reached. */
+    private void storeAnswer(String path, Object result) {
+        if (appContext == null || tokenOverride != null || server.id == null) {
+            return;
+        }
+
+        try {
+            JSONObject wrapper = new JSONObject();
+            wrapper.put("result", result == null ? JSONObject.NULL : result);
+            LocalStore.get(appContext).putCached(server.id, currentBookId(), path, wrapper.toString());
+        } catch (JSONException | RuntimeException ex) {
+            // the copy on the phone is only a convenience
+        }
+    }
+
+    private <T> boolean answerFromCache(String path, Parser<T> parser, Callback<T> callback) {
+        if (appContext == null || tokenOverride != null || server.id == null) {
+            return false;
+        }
+
+        try {
+            LocalStore.Cached cached = LocalStore.get(appContext).getCached(server.id, currentBookId(), path);
+
+            if (cached == null) {
+                return false;
+            }
+
+            Object result = new JSONObject(cached.body).opt("result");
+            T parsed = parser == null ? null : parser.parse(result == JSONObject.NULL ? null : result);
+            MAIN.post(() -> callback.onCached(parsed, cached.savedAt));
+            return true;
+        } catch (JSONException | RuntimeException ex) {
+            return false;
+        }
+    }
+
+    /**
+     * Calls the server on the calling thread, for work already running in the background such as sending changes made offline.
+     * A query is added to the path for GET; the body is sent for POST.
+     */
+    public Object call(String method, String path, Map<String, String> query, JSONObject body) throws ApiException, JSONException {
+        String fullPath = path;
+
+        if (query != null && !query.isEmpty()) {
+            StringBuilder builder = new StringBuilder(path).append('?');
+
+            for (Map.Entry<String, String> entry : query.entrySet()) {
+                if (builder.charAt(builder.length() - 1) != '?') {
+                    builder.append('&');
+                }
+
+                builder.append(encode(entry.getKey())).append('=').append(encode(entry.getValue()));
+            }
+
+            fullPath = builder.toString();
+        }
+
+        return execute(method, fullPath, "GET".equals(method) ? null : body == null ? new JSONObject() : body);
     }
 
     public <T> void post(String path, JSONObject body, Parser<T> parser, Callback<T> callback) {
@@ -179,7 +274,7 @@ public final class Api {
                 byte[] bytes = readBytes(connection.getInputStream());
                 MAIN.post(() -> callback.onSuccess(bytes));
             } catch (IOException ex) {
-                ApiException error = new ApiException(0, 0, text(R.string.error_unreachable));
+                ApiException error = ApiException.unreachable(text(R.string.error_unreachable));
                 MAIN.post(() -> callback.onError(error));
             } finally {
                 if (connection != null) {
@@ -327,7 +422,7 @@ public final class Api {
             return json.opt("result");
         } catch (IOException ex) {
             String message = ex.getMessage();
-            throw new ApiException(0, 0, text(R.string.error_unreachable) + (message == null ? "" : " (" + message + ")"));
+            throw ApiException.unreachable(text(R.string.error_unreachable) + (message == null ? "" : " (" + message + ")"));
         } finally {
             if (connection != null) {
                 connection.disconnect();

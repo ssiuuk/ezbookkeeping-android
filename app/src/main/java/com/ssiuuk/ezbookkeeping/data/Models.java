@@ -335,9 +335,12 @@ public final class Models {
         public final List<String> pictureUrls = new ArrayList<>();
         public String projectId;
         public String merchant;
+        /** What the server sent, to tell later whether it changed meanwhile. */
+        public JSONObject json;
 
         public static Transaction parse(JSONObject json) {
             Transaction transaction = new Transaction();
+            transaction.json = json;
             transaction.id = json.optString("id");
             transaction.timeSequenceId = json.optString("timeSequenceId");
             transaction.type = json.optInt("type");

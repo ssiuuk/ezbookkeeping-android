@@ -9,4 +9,10 @@
     <plurals name="widget_review_count">
         <item quantity="other">%d 笔待确认</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="other">%d 项更改尚未同步到服务器</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="other">本机有 %d 项更改尚未同步到此服务器，删除后会丢失。</item>
+    </plurals>
 </resources>
