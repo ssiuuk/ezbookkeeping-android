@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="server_count">
+        <item quantity="one">%1$d сервер</item>
+        <item quantity="few">%1$d сервера</item>
+        <item quantity="many">%1$d серверов</item>
+        <item quantity="other">%1$d сервера</item>
+    </plurals>
+    <plurals name="to_review_count">
+        <item quantity="one">%d покупка на проверку</item>
+        <item quantity="few">%d покупки на проверку</item>
+        <item quantity="many">%d покупок на проверку</item>
+        <item quantity="other">%d покупки на проверку</item>
+    </plurals>
+    <plurals name="widget_review_count">
+        <item quantity="one">%d на проверку</item>
+        <item quantity="few">%d на проверку</item>
+        <item quantity="many">%d на проверку</item>
+        <item quantity="other">%d на проверку</item>
+    </plurals>
+</resources>

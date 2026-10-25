@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="server_count">
+        <item quantity="one">%1$d server</item>
+        <item quantity="few">%1$d servere</item>
+        <item quantity="other">%1$d de servere</item>
+    </plurals>
+    <plurals name="to_review_count">
+        <item quantity="one">%d cumpărătură de verificat</item>
+        <item quantity="few">%d cumpărături de verificat</item>
+        <item quantity="other">%d de cumpărături de verificat</item>
+    </plurals>
+    <plurals name="widget_review_count">
+        <item quantity="one">%d de verificat</item>
+        <item quantity="few">%d de verificat</item>
+        <item quantity="other">%d de verificat</item>
+    </plurals>
+</resources>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="server_count">
+        <item quantity="one">%1$d strežnik</item>
+        <item quantity="two">%1$d strežnika</item>
+        <item quantity="few">%1$d strežniki</item>
+        <item quantity="other">%1$d strežnikov</item>
+    </plurals>
+    <plurals name="to_review_count">
+        <item quantity="one">%d nakup za pregled</item>
+        <item quantity="two">%d nakupa za pregled</item>
+        <item quantity="few">%d nakupi za pregled</item>
+        <item quantity="other">%d nakupov za pregled</item>
+    </plurals>
+    <plurals name="widget_review_count">
+        <item quantity="one">%d za pregled</item>
+        <item quantity="two">%d za pregled</item>
+        <item quantity="few">%d za pregled</item>
+        <item quantity="other">%d za pregled</item>
+    </plurals>
+</resources>

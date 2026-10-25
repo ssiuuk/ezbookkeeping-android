@@ -4,6 +4,10 @@ An Android app for your own ezBookkeeping server. The screens you use every day 
 
 You can add several servers and switch between them in Settings, for example a home server and a family one. On first launch the app asks for the server to connect to.
 
+The app speaks the same languages as the server's web app. It follows the phone's language, or the one picked in **Settings → Language** (on Android 13 and later also in Android's own app language setting). Words the web app already has are copied from the server's `src/locales`; the rest were translated for the app.
+
+The **Spending** home screen widget can be from one row by two columns up to four by four. One row shows the period's spending and an add button; two rows add income and two other periods; three and four rows add the latest transactions and buttons for income, transfers and Wallet purchases to review. Its settings (shown when it is added, or by touching and holding it on Android 12 and later) choose the period, the book and whether amounts are hidden. It refreshes every 30 minutes, whenever something changes in the app, and from its refresh button.
+
 ## Install
 
 1. Every push to `main` builds the app with GitHub Actions (workflow "Build Android App", which can also be started by hand from the Actions tab).
