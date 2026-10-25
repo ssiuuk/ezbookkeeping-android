@@ -91,12 +91,51 @@ public class SyncTest {
         LocalStore.Change open = store.change(queued.id);
         FakeServer remote = new FakeServer();
         remote.whileAdding = () -> Sync.deleteEdit(context, server, open);
-        Sync.send(store, store.change(queued.id), remote, NOW);
 
-        List<LocalStore.Change> changes = Sync.changes(context, server);
-        assertEquals(1, changes.size());
-        assertEquals(LocalStore.KIND_DELETE, changes.get(0).kind);
-        assertEquals("1001", changes.get(0).transactionId);
+        // one run of the background sending, as the worker does it
+        assertTrue(drain(remote));
+
+        assertEquals(1, remote.adds);
+        assertEquals(1, remote.deletes);
+        assertTrue(remote.transactions.isEmpty());
+        assertTrue(Sync.changes(context, server).isEmpty());
+    }
+
+    @Test
+    public void lostAnswersNeverAddItTwice() throws Exception {
+        FakeServer remote = new FakeServer();
+        LocalStore.Change change = Sync.queue(context, server, null, LocalStore.KIND_ADD, null, newBody("Coffee"), null, null);
+
+        // the add reaches the server but its answer is lost, twice, a few minutes apart
+        remote.loseAnswers = 2;
+        sendLosingAnswer(change.id, remote, NOW);
+        sendLosingAnswer(change.id, remote, NOW + 3 * 60_000);
+        // by now the server's duplicate check has forgotten the first one
+        sendLosingAnswer(change.id, remote, NOW + 6 * 60_000);
+
+        assertEquals(1, remote.transactions.size());
+        assertEquals(LocalStore.STATE_CONFLICT, store.change(change.id).state);
+    }
+
+    /** One try at sending; a lost answer is the network failing after the server did the work, as the worker sees it. */
+    private void sendLosingAnswer(long changeId, FakeServer remote, long now) throws Exception {
+        LocalStore.Change change = store.change(changeId);
+
+        if (!change.isWaiting()) {
+            return;
+        }
+
+        remote.now = now;
+
+        try {
+            Sync.send(store, change, remote, now);
+        } catch (ApiException ex) {
+            assertTrue(ex.unreachable);
+        }
+    }
+
+    private boolean drain(FakeServer remote) {
+        return Sync.drain(store, id -> id.equals(server.id) ? server : null, (s, change) -> remote, "Unexpected");
     }
 
     @Test
@@ -147,23 +186,7 @@ public class SyncTest {
     }
 
     @Test
-    public void retriedAddIsSentAgainWhileTheServerRemembersIt() throws Exception {
-        FakeServer remote = new FakeServer();
-        remote.transactions.add(serverCopy("900", "Coffee"));
-        LocalStore.Change change = Sync.queue(context, server, null, LocalStore.KIND_ADD, null, newBody("Coffee"), null, null);
-        change = store.change(change.id);
-        change.attempts = 1;
-        change.lastAttemptAt = NOW - 60_000;
-        store.updateIfUnchanged(change);
-        Sync.send(store, store.change(change.id), remote, NOW);
-
-        // the same clientSessionId lets the server return the earlier one instead of adding it twice
-        assertEquals(1, remote.adds);
-        assertNull(store.change(change.id));
-    }
-
-    @Test
-    public void similarTransactionLaterIsLeftToTheUser() throws Exception {
+    public void similarTransactionAfterARetryIsLeftToTheUser() throws Exception {
         FakeServer remote = new FakeServer();
         remote.transactions.add(serverCopy("900", "Coffee"));
         LocalStore.Change change = Sync.queue(context, server, null, LocalStore.KIND_ADD, null, newBody("Coffee"), null, null);
@@ -245,6 +268,13 @@ public class SyncTest {
         Step whileAdding;
         int adds;
         int modifies;
+        int deletes;
+        /** How many adds are done but answered as if the network failed. */
+        int loseAnswers;
+        /** The server's clock, for its duplicate check on clientSessionId, which forgets after 5 minutes. */
+        long now = NOW;
+        private final Map<String, Long> seen = new java.util.HashMap<>();
+        private final Map<String, JSONObject> bySession = new java.util.HashMap<>();
         private int nextId = 1001;
 
         @Override
@@ -258,9 +288,26 @@ public class SyncTest {
                             whileAdding.run();
                         }
 
-                        JSONObject added = new JSONObject(body.toString()).put("id", String.valueOf(nextId++));
-                        added.remove("clientSessionId");
-                        transactions.add(added);
+                        String session = body.optString("clientSessionId");
+                        Long seenAt = seen.get(session);
+                        JSONObject added;
+
+                        if (seenAt != null && now - seenAt < 5 * 60_000) {
+                            // the server's duplicate check: the earlier one comes back, and its record is not renewed
+                            added = bySession.get(session);
+                        } else {
+                            added = new JSONObject(body.toString()).put("id", String.valueOf(nextId++));
+                            added.remove("clientSessionId");
+                            transactions.add(added);
+                            seen.put(session, now);
+                            bySession.put(session, added);
+                        }
+
+                        if (loseAnswers > 0) {
+                            loseAnswers--;
+                            throw ApiException.unreachable("lost");
+                        }
+
                         return added;
                     }
                     case "v1/transactions/modify.json": {
@@ -268,6 +315,11 @@ public class SyncTest {
                         JSONObject current = find(body.getString("id"));
                         transactions.set(transactions.indexOf(current), new JSONObject(body.toString()));
                         return body;
+                    }
+                    case "v1/transactions/delete.json": {
+                        deletes++;
+                        transactions.remove(find(body.getString("id")));
+                        return true;
                     }
                     case "v1/transactions/get.json": {
                         JSONObject current = find(query.get("id"));

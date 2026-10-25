@@ -42,8 +42,8 @@ public final class Sync {
     private static final int ERROR_TRANSACTION_NOT_FOUND = 205001;
     // the server may move a transaction's time by a few seconds when another one has the same second
     private static final long SAME_TIME_SECONDS = 120;
-    // the server recognizes a repeated add by its clientSessionId for 5 minutes by default; a little less to be safe
-    private static final long SERVER_REMEMBERS_MILLIS = 4 * 60 * 1000;
+    // passes over the outbox in one run, for changes that sending itself creates (a deletion of an add removed meanwhile)
+    private static final int MAX_PASSES = 5;
     private static final String[] COMPARED = { "type", "categoryId", "sourceAccountId", "sourceAmount", "comment", "merchant", "projectId" };
 
     private static Runnable listener;
@@ -260,58 +260,80 @@ public final class Sync {
 
     /** Sends everything waiting; false when a server couldn't be reached, so it should be tried again later. */
     public static synchronized boolean run(Context context) {
-        LocalStore store = LocalStore.get(context);
         ServerStore servers = ServerStore.get(context);
+        String unexpected = Languages.localized(context).getString(R.string.error_unexpected_response);
+        return drain(LocalStore.get(context), servers::findById,
+            (server, change) -> new Api(server).inBackground().withBook(change.bookId)::call, unexpected);
+    }
+
+    /** Where a change of a server is sent; the app's Api, or a stand-in in tests. */
+    interface Remotes {
+        Remote of(Server server, LocalStore.Change change);
+    }
+
+    /**
+     * Sends the waiting changes of the servers found by id, oldest first, until none is left that can be sent now, including
+     * changes that sending creates. False when a server couldn't be reached.
+     */
+    static boolean drain(LocalStore store, java.util.function.Function<String, Server> servers, Remotes remotes, String unexpected) {
         Set<String> skipped = new HashSet<>();
         boolean complete = true;
         boolean changed = false;
 
-        for (LocalStore.Change change : store.allChanges()) {
-            if (!change.isWaiting() || skipped.contains(change.serverId)) {
-                continue;
-            }
+        for (int pass = 0; pass < MAX_PASSES; pass++) {
+            boolean sentAny = false;
 
-            Server server = servers.findById(change.serverId);
-
-            if (server == null) {
-                // removing a server removes its changes, so this one isn't in the app (yet)
-                continue;
-            }
-
-            if (!server.isSignedIn()) {
-                // waits until the user signs in again
-                skipped.add(server.id);
-                continue;
-            }
-
-            if (!userOf(server).equals(change.userName)) {
-                // made by another user of this server: waits until they sign in again
-                continue;
-            }
-
-            Remote remote = new Api(server).inBackground().withBook(change.bookId)::call;
-
-            try {
-                send(store, change, remote, System.currentTimeMillis());
-                changed = true;
-            } catch (ApiException ex) {
-                if (ex.unreachable) {
-                    // later changes may depend on this one, so the rest of this server's changes wait too
-                    skipped.add(server.id);
-                    complete = false;
-                } else if (ex.isUnauthorized()) {
-                    skipped.add(server.id);
-                } else {
-                    change.state = LocalStore.STATE_FAILED;
-                    change.message = ex.getMessage();
-                    store.updateIfUnchanged(change);
-                    changed = true;
+            for (LocalStore.Change change : store.allChanges()) {
+                if (!change.isWaiting() || skipped.contains(change.serverId)) {
+                    continue;
                 }
-            } catch (JSONException ex) {
-                change.state = LocalStore.STATE_FAILED;
-                change.message = Languages.localized(context).getString(R.string.error_unexpected_response);
-                store.updateIfUnchanged(change);
-                changed = true;
+
+                Server server = servers.apply(change.serverId);
+
+                if (server == null) {
+                    // removing a server removes its changes, so this one isn't in the app (yet)
+                    continue;
+                }
+
+                if (!server.isSignedIn()) {
+                    // waits until the user signs in again
+                    skipped.add(server.id);
+                    continue;
+                }
+
+                if (!userOf(server).equals(change.userName)) {
+                    // made by another user of this server: waits until they sign in again
+                    continue;
+                }
+
+                try {
+                    send(store, change, remotes.of(server, change), System.currentTimeMillis());
+                    sentAny = true;
+                } catch (ApiException ex) {
+                    if (ex.unreachable) {
+                        // later changes may depend on this one, so the rest of this server's changes wait too
+                        skipped.add(server.id);
+                        complete = false;
+                    } else if (ex.isUnauthorized()) {
+                        skipped.add(server.id);
+                    } else {
+                        change.state = LocalStore.STATE_FAILED;
+                        change.message = ex.getMessage();
+                        store.updateIfUnchanged(change);
+                        sentAny = true;
+                    }
+                } catch (JSONException ex) {
+                    change.state = LocalStore.STATE_FAILED;
+                    change.message = unexpected;
+                    store.updateIfUnchanged(change);
+                    sentAny = true;
+                }
+            }
+
+            changed |= sentAny;
+
+            if (!sentAny) {
+                break;
             }
         }
 
@@ -337,10 +359,10 @@ public final class Sync {
     static void send(LocalStore store, LocalStore.Change change, Remote remote, long now) throws ApiException, JSONException {
         switch (change.kind) {
             case LocalStore.KIND_ADD: {
-                // an earlier try may have reached the server even though no answer came back. Within the server's own
-                // duplicate check the same clientSessionId gets that transaction back; after it, a transaction like this one
-                // may be it or a separate purchase, so the user decides instead of the app.
-                if (change.attempts > 0 && now - change.lastAttemptAt > SERVER_REMEMBERS_MILLIS) {
+                // an earlier try may have reached the server even though no answer came back. The server's duplicate check
+                // on clientSessionId can't be relied on (it expires, can be turned off and is lost on a restart), so when a
+                // transaction like this one is there, it may be this one or a separate purchase, and the user decides.
+                if (change.attempts > 0) {
                     JSONObject similar = findSimilar(remote, change.body);
 
                     if (similar != null) {
