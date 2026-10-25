@@ -24,6 +24,7 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.regex.Pattern;
 
 /**
  * Walks through the main screens against a seeded test server and saves a screenshot of each,
@@ -265,7 +266,7 @@ public class ScreenshotTest {
 
             if (widgets.isRequestPinAppWidgetSupported()) {
                 widgets.requestPinAppWidget(new ComponentName(context, SpendingWidget.class), null, null);
-                tap(By.clickable(true).textMatches("(?i)add( to home screen)?"));
+                tap(By.clickable(true).text(Pattern.compile("(?i)add( to home screen)?")));
                 device.pressHome();
                 // the widget follows the app's language and shows this month's spending once it has loaded
                 find(By.res(packageName, "label").textStartsWith("本月"));
@@ -296,7 +297,6 @@ public class ScreenshotTest {
         return find(selector);
     }
 
-    /** Scrolls the form until the field is on screen, since the add screen is taller than the phone. */
     /** Scrolls the list of a single-choice dialog, such as the language list, until the selector shows. */
     private UiObject2 scrollDialogTo(BySelector selector) {
         UiObject2 found = device.wait(Until.findObject(selector), 3000);
@@ -339,6 +339,7 @@ public class ScreenshotTest {
         return found;
     }
 
+    /** Scrolls the form until the field is on screen, since the add screen is taller than the phone. */
     private UiObject2 scrollTo(BySelector selector) {
         UiObject2 scroll = find(By.res(packageName, "scroll"));
         UiObject2 found = device.findObject(selector);
