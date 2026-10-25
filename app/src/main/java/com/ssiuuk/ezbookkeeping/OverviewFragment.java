@@ -17,10 +17,12 @@ import com.google.android.material.snackbar.Snackbar;
 import com.ssiuuk.ezbookkeeping.data.Api;
 import com.ssiuuk.ezbookkeeping.data.ApiException;
 import com.ssiuuk.ezbookkeeping.data.Formats;
+import com.ssiuuk.ezbookkeeping.data.LocalStore;
 import com.ssiuuk.ezbookkeeping.data.Models;
 import com.ssiuuk.ezbookkeeping.data.PendingPayments;
 import com.ssiuuk.ezbookkeeping.data.Server;
 import com.ssiuuk.ezbookkeeping.data.ServerStore;
+import com.ssiuuk.ezbookkeeping.data.Sync;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -44,12 +46,19 @@ public class OverviewFragment extends Fragment implements Reloadable {
     private View reviewCard;
     private TextView reviewTitle;
     private LinearLayout reviewList;
+    private TextView offlineNote;
+    private View syncCard;
+    private TextView syncTitle;
+    private TextView syncHint;
+    private LinearLayout syncList;
 
     private Map<String, Models.PeriodAmounts> amounts;
     private List<Models.Account> accounts;
     private Models.ExchangeRates rates = new Models.ExchangeRates();
     private int pending;
     private int loadedVersion = -1;
+    /** When the oldest figures shown were saved, while the server can't be reached; 0 when they are current. */
+    private long offlineSince;
 
     @Nullable
     @Override
@@ -67,8 +76,16 @@ public class OverviewFragment extends Fragment implements Reloadable {
         reviewCard = view.findViewById(R.id.review_card);
         reviewTitle = view.findViewById(R.id.review_title);
         reviewList = view.findViewById(R.id.review_list);
+        offlineNote = view.findViewById(R.id.offline_note);
+        syncCard = view.findViewById(R.id.sync_card);
+        syncTitle = view.findViewById(R.id.sync_title);
+        syncHint = view.findViewById(R.id.sync_hint);
+        syncList = view.findViewById(R.id.sync_list);
 
-        refresh.setOnRefreshListener(this::load);
+        refresh.setOnRefreshListener(() -> {
+            Sync.schedule(requireContext());
+            load();
+        });
         view.findViewById(R.id.see_all).setOnClickListener(v -> ((MainActivity) requireActivity()).showTab(R.id.nav_transactions));
         view.findViewById(R.id.assets_card).setOnClickListener(v -> ((MainActivity) requireActivity()).showTab(R.id.nav_accounts));
         return view;
@@ -92,6 +109,36 @@ public class OverviewFragment extends Fragment implements Reloadable {
         }
 
         renderReview();
+        renderSync();
+    }
+
+    /** Transactions saved on this phone that the server hasn't taken yet; ones that need a decision say so. */
+    private void renderSync() {
+        Server server = ServerStore.get(requireContext()).getActiveServer();
+        List<LocalStore.Change> changes = server == null ? java.util.Collections.emptyList() : Sync.changes(requireContext(), server);
+        syncCard.setVisibility(changes.isEmpty() ? View.GONE : View.VISIBLE);
+        syncList.removeAllViews();
+
+        if (changes.isEmpty()) {
+            return;
+        }
+
+        boolean attention = false;
+
+        for (LocalStore.Change change : changes) {
+            attention |= !change.isWaiting();
+        }
+
+        syncTitle.setText(getResources().getQuantityString(R.plurals.sync_count, changes.size(), changes.size()));
+        syncHint.setText(attention ? R.string.sync_hint_attention : R.string.sync_hint_waiting);
+        LayoutInflater inflater = LayoutInflater.from(requireContext());
+
+        for (LocalStore.Change change : changes) {
+            View row = inflater.inflate(R.layout.item_transaction, syncList, false);
+            ChangeViews.bind(row, change);
+            row.setOnClickListener(v -> ChangeViews.open(requireActivity(), change, this::renderSync));
+            syncList.addView(row);
+        }
     }
 
     /** Purchases picked up from Wallet, waiting to be saved; tapping one opens it in the add screen. */
@@ -150,14 +197,22 @@ public class OverviewFragment extends Fragment implements Reloadable {
 
         loadedVersion = Ui.dataVersion;
         refresh.setRefreshing(true);
+        offlineSince = 0;
         pending = 4;
         Api api = new Api(server);
 
-        api.get("v1/transactions/amounts.json", Api.query("query", Models.PeriodAmounts.query(server, PERIODS), "use_transaction_timezone", "false"), Models.PeriodAmounts::parseAll, new Api.Callback<Map<String, Models.PeriodAmounts>>() {
+        // the query holds today's date, so keep the answer under one name to have figures to show on another day
+        new Api(server).cacheAs("v1/transactions/amounts.json").get("v1/transactions/amounts.json", Api.query("query", Models.PeriodAmounts.query(server, PERIODS), "use_transaction_timezone", "false"), Models.PeriodAmounts::parseAll, new Api.Callback<Map<String, Models.PeriodAmounts>>() {
             @Override
             public void onSuccess(Map<String, Models.PeriodAmounts> result) {
                 amounts = result;
                 done();
+            }
+
+            @Override
+            public void onCached(Map<String, Models.PeriodAmounts> result, long savedAt) {
+                cached(savedAt);
+                onSuccess(result);
             }
 
             @Override
@@ -171,6 +226,12 @@ public class OverviewFragment extends Fragment implements Reloadable {
             public void onSuccess(List<Models.Account> result) {
                 accounts = result;
                 done();
+            }
+
+            @Override
+            public void onCached(List<Models.Account> result, long savedAt) {
+                cached(savedAt);
+                onSuccess(result);
             }
 
             @Override
@@ -204,6 +265,12 @@ public class OverviewFragment extends Fragment implements Reloadable {
             }
 
             @Override
+            public void onCached(Models.TransactionPage page, long savedAt) {
+                cached(savedAt);
+                onSuccess(page);
+            }
+
+            @Override
             public void onError(ApiException error) {
                 failed(error);
             }
@@ -217,10 +284,32 @@ public class OverviewFragment extends Fragment implements Reloadable {
 
         refresh.setRefreshing(false);
         render();
+        renderOffline();
+    }
+
+    private void renderOffline() {
+        offlineNote.setVisibility(offlineSince == 0 ? View.GONE : View.VISIBLE);
+
+        if (offlineSince > 0) {
+            offlineNote.setText(getString(R.string.offline_note, Ui.savedAt(requireContext(), offlineSince)));
+        } else if (offlineSince < 0) {
+            offlineNote.setText(R.string.offline_note_nothing_saved);
+        }
+    }
+
+    private void cached(long savedAt) {
+        offlineSince = offlineSince <= 0 ? savedAt : Math.min(offlineSince, savedAt);
     }
 
     private void failed(ApiException error) {
         if (!isAdded()) {
+            return;
+        }
+
+        if (error.unreachable) {
+            // the note at the top already says the server can't be reached
+            offlineSince = offlineSince == 0 ? -1 : offlineSince;
+            done();
             return;
         }
 

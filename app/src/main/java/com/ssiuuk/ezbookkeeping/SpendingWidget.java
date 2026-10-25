@@ -231,6 +231,13 @@ public class SpendingWidget extends AppWidgetProvider {
                 }
 
                 @Override
+                public void onCached(Map<String, Models.PeriodAmounts> result, long savedAt) {
+                    // the server is out of reach: show what it last said, marked as not updated
+                    error[0] = "offline";
+                    onSuccess(result);
+                }
+
+                @Override
                 public void onError(ApiException ex) {
                     error[0] = ex.getMessage();
                     finished.run();
@@ -257,6 +264,12 @@ public class SpendingWidget extends AppWidgetProvider {
                 public void onSuccess(Models.TransactionPage result) {
                     results[2] = result;
                     finished.run();
+                }
+
+                @Override
+                public void onCached(Models.TransactionPage result, long savedAt) {
+                    error[0] = "offline";
+                    onSuccess(result);
                 }
 
                 @Override

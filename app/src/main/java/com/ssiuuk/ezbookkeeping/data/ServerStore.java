@@ -27,10 +27,12 @@ public final class ServerStore {
     private static Runnable changeListener;
 
     private final SharedPreferences preferences;
+    private final Context context;
     private final List<Server> servers = new ArrayList<>();
     private String activeServerId;
 
     private ServerStore(Context context) {
+        this.context = context;
         preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
         load();
     }
@@ -104,6 +106,8 @@ public final class ServerStore {
 
     public synchronized void remove(Server server) {
         servers.remove(server);
+        LocalStore.get(context).clearCache(server.id);
+        LocalStore.get(context).removeAll(server.id);
 
         if (server.id.equals(activeServerId)) {
             activeServerId = servers.isEmpty() ? null : servers.get(0).id;
@@ -121,6 +125,8 @@ public final class ServerStore {
         server.userJson = null;
         server.bookId = null;
         server.bookName = null;
+        // changes not sent yet stay, and are sent after signing in again
+        LocalStore.get(context).clearCache(server.id);
         save();
     }
 

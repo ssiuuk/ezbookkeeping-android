@@ -27,6 +27,12 @@ final class Ui {
         SpendingWidget.refreshAll(context);
     }
 
+    /** When figures saved on the phone came from the server: the time today, or the date and time before. */
+    static String savedAt(Context context, long millis) {
+        String time = Formats.time(context, millis);
+        return Formats.startOfDay(millis) == Formats.startOfDay(System.currentTimeMillis()) ? time : Formats.date(context, millis) + " " + time;
+    }
+
     static void bindAvatar(TextView avatar, String name, String hexColor) {
         int fallback = MaterialColors.getColor(avatar, com.google.android.material.R.attr.colorSecondary);
         avatar.setText(Formats.initial(name));

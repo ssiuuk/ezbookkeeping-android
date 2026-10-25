@@ -15,4 +15,12 @@
         <item quantity="many">%d à vérifier</item>
         <item quantity="other">%d à vérifier</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="one">%d modification pas encore sur le serveur</item>
+        <item quantity="other">%d modifications pas encore sur le serveur</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="one">%d modification faite sur ce téléphone n’a pas encore atteint ce serveur et sera perdue.</item>
+        <item quantity="other">%d modifications faites sur ce téléphone n’ont pas encore atteint ce serveur et seront perdues.</item>
+    </plurals>
 </resources>

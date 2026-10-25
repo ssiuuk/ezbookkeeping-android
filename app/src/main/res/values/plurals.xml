@@ -12,4 +12,12 @@
         <item quantity="one">%d to review</item>
         <item quantity="other">%d to review</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="one">%d change not on the server yet</item>
+        <item quantity="other">%d changes not on the server yet</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="one">%d change made on this phone hasn\'t reached this server yet and will be lost.</item>
+        <item quantity="other">%d changes made on this phone haven\'t reached this server yet and will be lost.</item>
+    </plurals>
 </resources>

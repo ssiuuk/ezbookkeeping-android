@@ -12,4 +12,12 @@
         <item quantity="one">%d zu prüfen</item>
         <item quantity="other">%d zu prüfen</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="one">%d Änderung noch nicht auf dem Server</item>
+        <item quantity="other">%d Änderungen noch nicht auf dem Server</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="one">%d auf diesem Telefon gemachte Änderung ist noch nicht auf diesem Server und geht verloren.</item>
+        <item quantity="other">%d auf diesem Telefon gemachte Änderungen sind noch nicht auf diesem Server und gehen verloren.</item>
+    </plurals>
 </resources>

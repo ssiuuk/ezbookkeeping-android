@@ -22,6 +22,7 @@ import com.ssiuuk.ezbookkeeping.data.ApiException;
 import com.ssiuuk.ezbookkeeping.data.Models;
 import com.ssiuuk.ezbookkeeping.data.Server;
 import com.ssiuuk.ezbookkeeping.data.ServerStore;
+import com.ssiuuk.ezbookkeeping.data.Sync;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -102,7 +103,11 @@ public class MainActivity extends BaseActivity {
         if (ServerStore.get(this).getActiveServer() != server) {
             startActivity(LaunchActivity.nextScreen(this, false));
             finish();
+            return;
         }
+
+        // changes made while the server was out of reach go now if it answers again
+        Sync.schedule(this);
     }
 
     @Override
@@ -331,6 +336,22 @@ public class MainActivity extends BaseActivity {
 
         if (fragment instanceof Reloadable) {
             ((Reloadable) fragment).reloadIfStale();
+        }
+    }
+
+    /** Lets the tab on screen catch up with data that changed in the background, such as changes sent after being offline. */
+    static void reloadShown() {
+        for (WeakReference<Activity> reference : new ArrayList<>(OPEN)) {
+            Activity activity = reference.get();
+
+            if (activity instanceof MainActivity && !activity.isFinishing()) {
+                MainActivity main = (MainActivity) activity;
+                Fragment fragment = main.getSupportFragmentManager().findFragmentByTag("tab" + main.currentTab);
+
+                if (fragment instanceof Reloadable) {
+                    ((Reloadable) fragment).reloadIfStale();
+                }
+            }
         }
     }
 

@@ -18,4 +18,16 @@
         <item quantity="many">%d do sprawdzenia</item>
         <item quantity="other">%d do sprawdzenia</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="one">%d zmiana jeszcze nie na serwerze</item>
+        <item quantity="few">%d zmiany jeszcze nie na serwerze</item>
+        <item quantity="many">%d zmian jeszcze nie na serwerze</item>
+        <item quantity="other">%d zmiany jeszcze nie na serwerze</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="one">%d zmiana zrobiona na tym telefonie nie dotarła jeszcze do tego serwera i zostanie utracona.</item>
+        <item quantity="few">%d zmiany zrobione na tym telefonie nie dotarły jeszcze do tego serwera i zostaną utracone.</item>
+        <item quantity="many">%d zmian zrobionych na tym telefonie nie dotarło jeszcze do tego serwera i zostaną utracone.</item>
+        <item quantity="other">%d zmiany zrobione na tym telefonie nie dotarły jeszcze do tego serwera i zostaną utracone.</item>
+    </plurals>
 </resources>

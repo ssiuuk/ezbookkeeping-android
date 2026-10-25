@@ -12,4 +12,12 @@
         <item quantity="one">%d για έλεγχο</item>
         <item quantity="other">%d για έλεγχο</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="one">%d αλλαγή δεν είναι ακόμη στον διακομιστή</item>
+        <item quantity="other">%d αλλαγές δεν είναι ακόμη στον διακομιστή</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="one">%d αλλαγή αυτού του τηλεφώνου δεν έχει φτάσει ακόμη σε αυτόν τον διακομιστή και θα χαθεί.</item>
+        <item quantity="other">%d αλλαγές αυτού του τηλεφώνου δεν έχουν φτάσει ακόμη σε αυτόν τον διακομιστή και θα χαθούν.</item>
+    </plurals>
 </resources>

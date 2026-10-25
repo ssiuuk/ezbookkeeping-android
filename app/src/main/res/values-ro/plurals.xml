@@ -15,4 +15,14 @@
         <item quantity="few">%d de verificat</item>
         <item quantity="other">%d de verificat</item>
     </plurals>
+    <plurals name="sync_count">
+        <item quantity="one">%d modificare nu este încă pe server</item>
+        <item quantity="few">%d modificări nu sunt încă pe server</item>
+        <item quantity="other">%d de modificări nu sunt încă pe server</item>
+    </plurals>
+    <plurals name="remove_server_unsent">
+        <item quantity="one">%d modificare făcută pe acest telefon nu a ajuns încă pe acest server și se va pierde.</item>
+        <item quantity="few">%d modificări făcute pe acest telefon nu au ajuns încă pe acest server și se vor pierde.</item>
+        <item quantity="other">%d de modificări făcute pe acest telefon nu au ajuns încă pe acest server și se vor pierde.</item>
+    </plurals>
 </resources>

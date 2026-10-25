@@ -10,6 +10,7 @@ import com.ssiuuk.ezbookkeeping.data.Api;
 import com.ssiuuk.ezbookkeeping.data.Languages;
 import com.ssiuuk.ezbookkeeping.data.Server;
 import com.ssiuuk.ezbookkeeping.data.ServerStore;
+import com.ssiuuk.ezbookkeeping.data.Sync;
 
 public class App extends Application {
     @Override
@@ -21,6 +22,12 @@ public class App extends Application {
         Api.init(this);
         Api.setUnauthorizedListener(this::onSignInExpired);
         ServerStore.setChangeListener(() -> SpendingWidget.refreshAll(this));
+        // after changes made offline reached the server, or were held back, the screens show the server's figures again
+        Sync.setListener(() -> {
+            Ui.dataChanged(this);
+            MainActivity.reloadShown();
+        });
+        Sync.schedule(this);
     }
 
     private void onSignInExpired(Server server) {
