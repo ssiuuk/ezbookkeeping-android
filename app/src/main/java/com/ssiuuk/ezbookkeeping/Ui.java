@@ -22,8 +22,9 @@ final class Ui {
     private Ui() {
     }
 
-    static void dataChanged() {
+    static void dataChanged(Context context) {
         dataVersion++;
+        SpendingWidget.refreshAll(context);
     }
 
     static void bindAvatar(TextView avatar, String name, String hexColor) {

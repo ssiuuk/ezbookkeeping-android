@@ -74,6 +74,7 @@ public class TransactionEditActivity extends BaseActivity {
     private static final String EXTRA_TRANSACTION_ID = "transaction_id";
     private static final String EXTRA_ACCOUNT_ID = "account_id";
     private static final String EXTRA_PENDING_ID = "pending_id";
+    private static final String EXTRA_TYPE = "type";
     private static final int MENU_DELETE = 1;
     private static final int MENU_DISMISS = 2;
     private static final int MAX_PHOTO_SIZE = 2048;
@@ -181,6 +182,11 @@ public class TransactionEditActivity extends BaseActivity {
         return new Intent(context, TransactionEditActivity.class).putExtra(EXTRA_ACCOUNT_ID, accountId);
     }
 
+    /** A new transaction of this type: Models.TRANSACTION_EXPENSE, _INCOME or _TRANSFER. */
+    public static Intent addIntent(Context context, int type) {
+        return new Intent(context, TransactionEditActivity.class).putExtra(EXTRA_TYPE, type);
+    }
+
     /** Opens a purchase picked up from Wallet, filled in and ready to save. */
     public static Intent reviewIntent(Context context, String pendingId) {
         return new Intent(context, TransactionEditActivity.class).putExtra(EXTRA_PENDING_ID, pendingId);
@@ -258,7 +264,11 @@ public class TransactionEditActivity extends BaseActivity {
         saveButton = findViewById(R.id.save_button);
         progress = findViewById(R.id.progress);
 
-        typeGroup.check(R.id.type_expense);
+        if (transactionId == null && pending == null) {
+            type = getIntent().getIntExtra(EXTRA_TYPE, Models.TRANSACTION_EXPENSE);
+        }
+
+        typeGroup.check(type == Models.TRANSACTION_INCOME ? R.id.type_income : type == Models.TRANSACTION_TRANSFER ? R.id.type_transfer : R.id.type_expense);
         typeGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked) {
                 return;
@@ -361,7 +371,7 @@ public class TransactionEditActivity extends BaseActivity {
             return true;
         } else if (item.getItemId() == MENU_DISMISS) {
             PendingPayments.remove(this, pending.id);
-            Ui.dataChanged();
+            Ui.dataChanged(getApplicationContext());
             finish();
             return true;
         }
@@ -1861,7 +1871,7 @@ public class TransactionEditActivity extends BaseActivity {
                     recent.rememberMerchant(pending.merchant, savedCategoryId, savedAccountId);
                     PendingPayments.remove(TransactionEditActivity.this, pending.id);
                 }
-                Ui.dataChanged();
+                Ui.dataChanged(getApplicationContext());
                 finish();
             }
 
@@ -1890,7 +1900,7 @@ public class TransactionEditActivity extends BaseActivity {
         api().post("v1/transactions/move/book.json", moveBody, null, new Api.Callback<Object>() {
             @Override
             public void onSuccess(Object result) {
-                Ui.dataChanged();
+                Ui.dataChanged(getApplicationContext());
                 finish();
             }
 
@@ -1937,13 +1947,13 @@ public class TransactionEditActivity extends BaseActivity {
         originalBookApi().post("v1/transactions/delete.json", body, null, new Api.Callback<Object>() {
             @Override
             public void onSuccess(Object result) {
-                Ui.dataChanged();
+                Ui.dataChanged(getApplicationContext());
                 finish();
             }
 
             @Override
             public void onError(ApiException error) {
-                Ui.dataChanged();
+                Ui.dataChanged(getApplicationContext());
                 new MaterialAlertDialogBuilder(TransactionEditActivity.this)
                     .setTitle(R.string.move_incomplete_title)
                     .setMessage(getString(R.string.move_incomplete_message, bookLabel(findBook(originalBookId)), error.getMessage()))
@@ -1980,7 +1990,7 @@ public class TransactionEditActivity extends BaseActivity {
                 originalBookApi().post("v1/transactions/delete.json", body, null, new Api.Callback<Object>() {
                     @Override
                     public void onSuccess(Object result) {
-                        Ui.dataChanged();
+                        Ui.dataChanged(getApplicationContext());
                         finish();
                     }
 

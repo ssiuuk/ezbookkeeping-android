@@ -1,7 +1,10 @@
 package com.ssiuuk.ezbookkeeping.data;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+
+import com.ssiuuk.ezbookkeeping.R;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -43,12 +46,14 @@ public final class Api {
     }
 
     private static UnauthorizedListener unauthorizedListener;
+    private static Context appContext;
 
     private final Server server;
     private String tokenOverride;
     private boolean useBook = true;
     private boolean bookOverridden;
     private String bookOverride;
+    private boolean background;
 
     public Api(Server server) {
         this.server = server;
@@ -56,6 +61,17 @@ public final class Api {
 
     public static void setUnauthorizedListener(UnauthorizedListener listener) {
         unauthorizedListener = listener;
+    }
+
+    /** Gives the error messages the app's language. */
+    public static void init(Context context) {
+        appContext = context.getApplicationContext();
+    }
+
+    /** For work nobody is looking at, such as the home screen widget: an expired sign-in doesn't open the sign-in screen. */
+    public Api inBackground() {
+        background = true;
+        return this;
     }
 
     /** Uses this token instead of the saved one, for the second step of a two-factor sign-in. */
@@ -130,7 +146,7 @@ public final class Api {
             } catch (ApiException ex) {
                 MAIN.post(() -> callback.onError(ex));
             } catch (JSONException ex) {
-                ApiException error = new ApiException(0, 0, "Unexpected response from the server");
+                ApiException error = new ApiException(0, 0, text(R.string.error_unexpected_response));
                 MAIN.post(() -> callback.onError(error));
             }
         });
@@ -155,7 +171,7 @@ public final class Api {
                 int status = connection.getResponseCode();
 
                 if (status != 200) {
-                    ApiException error = new ApiException(status, 0, "The server answered with error " + status);
+                    ApiException error = new ApiException(status, 0, text(R.string.error_server_status, status));
                     MAIN.post(() -> callback.onError(error));
                     return;
                 }
@@ -163,7 +179,7 @@ public final class Api {
                 byte[] bytes = readBytes(connection.getInputStream());
                 MAIN.post(() -> callback.onSuccess(bytes));
             } catch (IOException ex) {
-                ApiException error = new ApiException(0, 0, "Can't reach the server");
+                ApiException error = new ApiException(0, 0, text(R.string.error_unreachable));
                 MAIN.post(() -> callback.onError(error));
             } finally {
                 if (connection != null) {
@@ -171,6 +187,10 @@ public final class Api {
                 }
             }
         });
+    }
+
+    private static String text(int resId, Object... args) {
+        return appContext == null ? "" : Languages.localized(appContext).getString(resId, args);
     }
 
     private String currentBookId() {
@@ -221,13 +241,13 @@ public final class Api {
                 T parsed = parser == null ? null : parser.parse(result);
                 MAIN.post(() -> callback.onSuccess(parsed));
             } catch (ApiException ex) {
-                if (ex.isUnauthorized() && tokenOverride == null && unauthorizedListener != null) {
+                if (ex.isUnauthorized() && tokenOverride == null && !background && unauthorizedListener != null) {
                     MAIN.post(() -> unauthorizedListener.onUnauthorized(server));
                 }
 
                 MAIN.post(() -> callback.onError(ex));
             } catch (JSONException ex) {
-                ApiException error = new ApiException(0, 0, "Unexpected response from the server");
+                ApiException error = new ApiException(0, 0, text(R.string.error_unexpected_response));
                 MAIN.post(() -> callback.onError(error));
             }
         });
@@ -244,7 +264,7 @@ public final class Api {
             connection.setReadTimeout(TIMEOUT_MILLIS);
             connection.setInstanceFollowRedirects(true);
             connection.setRequestProperty("Accept", "application/json");
-            connection.setRequestProperty("Accept-Language", Locale.getDefault().toLanguageTag());
+            connection.setRequestProperty("Accept-Language", (appContext == null ? Locale.getDefault() : Languages.locale(appContext)).toLanguageTag());
 
             TimeZone timeZone = TimeZone.getDefault();
             connection.setRequestProperty("X-Timezone-Offset", String.valueOf(timeZone.getOffset(System.currentTimeMillis()) / 60000));
@@ -291,23 +311,23 @@ public final class Api {
                 json = new JSONObject(text);
             } catch (JSONException ex) {
                 if (status == 404) {
-                    throw new ApiException(status, 0, "This server doesn't support this feature");
+                    throw new ApiException(status, 0, text(R.string.error_not_supported));
                 }
 
                 throw new ApiException(status, 0, status >= 400
-                    ? "The server answered with error " + status
-                    : "This address doesn't look like an ezBookkeeping server");
+                    ? text(R.string.error_server_status, status)
+                    : text(R.string.not_ezbookkeeping_server));
             }
 
             if (!json.optBoolean("success", false)) {
                 String message = json.optString("errorMessage", "");
-                throw new ApiException(status, json.optInt("errorCode", 0), message.isEmpty() ? "The server answered with error " + status : message);
+                throw new ApiException(status, json.optInt("errorCode", 0), message.isEmpty() ? text(R.string.error_server_status, status) : message);
             }
 
             return json.opt("result");
         } catch (IOException ex) {
             String message = ex.getMessage();
-            throw new ApiException(0, 0, "Can't reach the server" + (message == null ? "" : " (" + message + ")"));
+            throw new ApiException(0, 0, text(R.string.error_unreachable) + (message == null ? "" : " (" + message + ")"));
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -349,7 +369,7 @@ public final class Api {
                 MAIN.post(() -> callback.onSuccess(info));
             } catch (IOException ex) {
                 String message = ex.getMessage();
-                ApiException error = new ApiException(0, 0, "Can't reach the server" + (message == null ? "" : " (" + message + ")"));
+                ApiException error = new ApiException(0, 0, text(R.string.error_unreachable) + (message == null ? "" : " (" + message + ")"));
                 MAIN.post(() -> callback.onError(error));
             } finally {
                 if (connection != null) {
