@@ -286,8 +286,23 @@ public class ScreenshotTest {
     private UiObject2 backTo(BySelector selector) {
         for (int i = 0; i < 3; i++) {
             dismissSystemDialogs();
-            device.pressBack();
-            UiObject2 found = device.wait(Until.findObject(selector), 3000);
+            UiObject2 found = device.findObject(selector);
+
+            if (found != null) {
+                return found;
+            }
+
+            if (packageName.equals(device.getCurrentPackageName())) {
+                device.pressBack();
+            } else {
+                // a dialog took a press meant for the app, or one press too many left it; bring it back as it was
+                Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+                Intent intent = context.getPackageManager().getLaunchIntentForPackage(packageName);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+            }
+
+            found = device.wait(Until.findObject(selector), 3000);
 
             if (found != null) {
                 return found;
