@@ -82,13 +82,16 @@ public class OverviewFragment extends Fragment implements Reloadable {
 
     @Override
     public void reloadIfStale() {
-        if (loadedVersion != Ui.dataVersion && isAdded()) {
+        // a fragment restored while the activity is recreated (after a language change, say) has no views yet; onResume catches up
+        if (getView() == null) {
+            return;
+        }
+
+        if (loadedVersion != Ui.dataVersion) {
             load();
         }
 
-        if (isAdded()) {
-            renderReview();
-        }
+        renderReview();
     }
 
     /** Purchases picked up from Wallet, waiting to be saved; tapping one opens it in the add screen. */
