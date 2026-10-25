@@ -157,7 +157,8 @@ public class TransactionsFragment extends Fragment implements Reloadable {
             public void onCached(Models.TransactionPage page, long savedAt) {
                 onSuccess(page);
 
-                if (reset && thisRequest == requestId && isAdded()) {
+                if (reset && thisRequest == requestId && isVisible()) {
+                    // only on the list itself; the overview has its own note
                     Snackbar.make(refresh, getString(R.string.offline_list, Ui.savedAt(requireContext(), savedAt)), Snackbar.LENGTH_LONG).show();
                 }
             }
