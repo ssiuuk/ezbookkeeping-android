@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">이 휴대전화에서 이 거래를 삭제했지만, 그 후 서버에서 변경되었습니다.</string>
     <string name="conflict_line">%1$s: 내 버전 %2$s, 서버 %3$s</string>
     <string name="conflict_line_was_now">%1$s: 이전 %2$s, 현재 %3$s</string>
-    <string name="conflict_other_fields">프로젝트나 태그도 다릅니다.</string>
+    <string name="conflict_maybe_added">서버에 거의 같은 시각의 비슷한 거래가 이미 있습니다. 응답 없이 앞서 전송된 이 거래일 수도 있고, 다른 거래일 수도 있습니다.</string>
+    <string name="conflict_add_anyway">그래도 추가</string>
+    <string name="conflict_dont_add">추가하지 않기</string>
+    <string name="sync_state_maybe_added">이미 서버에 있을 수 있음</string>
+    <string name="conflict_other_fields">다른 정보(프로젝트, 태그, 영수증 또는 위치)도 다릅니다.</string>
     <string name="conflict_keep_mine">내 버전 유지</string>
     <string name="conflict_keep_servers">서버 버전 유지</string>
     <string name="conflict_add_back">내 버전 다시 추가</string>

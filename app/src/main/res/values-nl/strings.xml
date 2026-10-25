@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">Je hebt deze transactie op deze telefoon verwijderd, maar hij is sindsdien op de server gewijzigd.</string>
     <string name="conflict_line">%1$s: de jouwe %2$s, die van de server %3$s</string>
     <string name="conflict_line_was_now">%1$s: was %2$s, nu %3$s</string>
-    <string name="conflict_other_fields">Ook het project of de labels verschillen.</string>
+    <string name="conflict_maybe_added">De server heeft al een transactie zoals deze, rond hetzelfde tijdstip. Het kan deze zijn, eerder verstuurd zonder antwoord, of een andere.</string>
+    <string name="conflict_add_anyway">Toch toevoegen</string>
+    <string name="conflict_dont_add">Niet toevoegen</string>
+    <string name="sync_state_maybe_added">Staat misschien al op de server</string>
+    <string name="conflict_other_fields">Ook andere gegevens (project, labels, bonnen of locatie) verschillen.</string>
     <string name="conflict_keep_mine">De mijne houden</string>
     <string name="conflict_keep_servers">Die van de server houden</string>
     <string name="conflict_add_back">De mijne opnieuw toevoegen</string>

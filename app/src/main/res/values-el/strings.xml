@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">Διαγράψατε αυτή τη συναλλαγή σε αυτό το τηλέφωνο, αλλά στο μεταξύ άλλαξε στον διακομιστή.</string>
     <string name="conflict_line">%1$s: δική σας %2$s, του διακομιστή %3$s</string>
     <string name="conflict_line_was_now">%1$s: ήταν %2$s, τώρα %3$s</string>
-    <string name="conflict_other_fields">Διαφέρουν επίσης το έργο ή οι ετικέτες.</string>
+    <string name="conflict_maybe_added">Ο διακομιστής έχει ήδη μια τέτοια συναλλαγή περίπου την ίδια ώρα. Μπορεί να είναι αυτή, που στάλθηκε νωρίτερα χωρίς απάντηση, ή μια άλλη.</string>
+    <string name="conflict_add_anyway">Προσθήκη παρ’ όλα αυτά</string>
+    <string name="conflict_dont_add">Να μην προστεθεί</string>
+    <string name="sync_state_maybe_added">Ίσως είναι ήδη στον διακομιστή</string>
+    <string name="conflict_other_fields">Διαφέρουν και άλλα στοιχεία (έργο, ετικέτες, αποδείξεις ή τοποθεσία).</string>
     <string name="conflict_keep_mine">Να μείνει η δική μου</string>
     <string name="conflict_keep_servers">Να μείνει του διακομιστή</string>
     <string name="conflict_add_back">Να προστεθεί ξανά η δική μου</string>

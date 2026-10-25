@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">Du hast diese Buchung auf diesem Telefon gelöscht, aber sie wurde inzwischen auf dem Server geändert.</string>
     <string name="conflict_line">%1$s: deine %2$s, auf dem Server %3$s</string>
     <string name="conflict_line_was_now">%1$s: vorher %2$s, jetzt %3$s</string>
-    <string name="conflict_other_fields">Auch Projekt oder Schlagwörter unterscheiden sich.</string>
+    <string name="conflict_maybe_added">Auf dem Server gibt es schon eine solche Buchung zu etwa derselben Zeit. Vielleicht ist es diese, früher gesendet, als keine Antwort kam, oder eine andere.</string>
+    <string name="conflict_add_anyway">Trotzdem hinzufügen</string>
+    <string name="conflict_dont_add">Nicht hinzufügen</string>
+    <string name="sync_state_maybe_added">Vielleicht schon auf dem Server</string>
+    <string name="conflict_other_fields">Auch andere Angaben (Projekt, Schlagwörter, Belege oder Ort) unterscheiden sich.</string>
     <string name="conflict_keep_mine">Meine behalten</string>
     <string name="conflict_keep_servers">Die vom Server behalten</string>
     <string name="conflict_add_back">Meine wieder hinzufügen</string>

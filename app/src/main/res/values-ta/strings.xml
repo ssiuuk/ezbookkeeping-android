@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">இந்தப் பரிவர்த்தனையை இந்தத் தொலைபேசியில் நீக்கினீர்கள், ஆனால் அதன் பிறகு சேவையகத்தில் மாற்றப்பட்டது.</string>
     <string name="conflict_line">%1$s: உங்களுடையது %2$s, சேவையகத்தினுடையது %3$s</string>
     <string name="conflict_line_was_now">%1$s: முன்பு %2$s, இப்போது %3$s</string>
-    <string name="conflict_other_fields">திட்டம் அல்லது குறிச்சொற்களும் வேறுபடுகின்றன.</string>
+    <string name="conflict_maybe_added">சுமார் அதே நேரத்தில் இதுபோன்ற பரிவர்த்தனை சேவையகத்தில் ஏற்கனவே உள்ளது. இது பதில் வராமல் முன்பு அனுப்பப்பட்ட இதுவாக இருக்கலாம், அல்லது வேறொன்றாக இருக்கலாம்.</string>
+    <string name="conflict_add_anyway">இருந்தாலும் சேர்</string>
+    <string name="conflict_dont_add">சேர்க்க வேண்டாம்</string>
+    <string name="sync_state_maybe_added">ஏற்கனவே சேவையகத்தில் இருக்கலாம்</string>
+    <string name="conflict_other_fields">பிற விவரங்களும் (திட்டம், குறிச்சொற்கள், ரசீதுகள் அல்லது இடம்) வேறுபடுகின்றன.</string>
     <string name="conflict_keep_mine">என்னுடையதை வை</string>
     <string name="conflict_keep_servers">சேவையகத்தினுடையதை வை</string>
     <string name="conflict_add_back">என்னுடையதை மீண்டும் சேர்</string>

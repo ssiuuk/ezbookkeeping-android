@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">Ai șters această tranzacție pe acest telefon, dar între timp a fost modificată pe server.</string>
     <string name="conflict_line">%1$s: a ta %2$s, a serverului %3$s</string>
     <string name="conflict_line_was_now">%1$s: era %2$s, acum %3$s</string>
-    <string name="conflict_other_fields">Diferă și proiectul sau etichetele.</string>
+    <string name="conflict_maybe_added">Serverul are deja o tranzacție ca aceasta, cam la aceeași oră. Poate fi aceasta, trimisă mai devreme fără răspuns, sau alta.</string>
+    <string name="conflict_add_anyway">Adaug-o oricum</string>
+    <string name="conflict_dont_add">Nu o adăuga</string>
+    <string name="sync_state_maybe_added">Poate e deja pe server</string>
+    <string name="conflict_other_fields">Diferă și alte detalii (proiect, etichete, chitanțe sau locație).</string>
     <string name="conflict_keep_mine">Păstrează-o pe a mea</string>
     <string name="conflict_keep_servers">Păstrează-o pe a serverului</string>
     <string name="conflict_add_back">Adaug-o din nou pe a mea</string>

@@ -249,7 +249,7 @@ public class TransactionEditActivity extends BaseActivity {
 
         long changeId = getIntent().getLongExtra(EXTRA_CHANGE_ID, 0);
         queued = changeId != 0 ? LocalStore.get(this).change(changeId)
-            : transactionId != null ? LocalStore.get(this).changeFor(server.id, transactionId) : null;
+            : transactionId != null ? Sync.changeFor(this, server, transactionId) : null;
 
         if (changeId != 0 && queued == null) {
             // sent meanwhile
@@ -1955,13 +1955,15 @@ public class TransactionEditActivity extends BaseActivity {
         JSONObject labels = ChangeViews.labels(category, account, type == Models.TRANSACTION_TRANSFER ? destinationAccount : null);
 
         if (queued != null) {
-            queued.body = body;
-            queued.labels = labels;
-            queued.state = LocalStore.STATE_WAITING;
-            queued.message = null;
-            queued.attempts = 0;
-            LocalStore.get(this).save(queued);
-            Sync.schedule(this);
+            try {
+                // also when it was sent while this screen was open: then it changes what the server made of it
+                Sync.saveEdit(this, server, queued, body, labels);
+            } catch (JSONException ex) {
+                saving = false;
+                setBusy(false);
+                showMessage(getString(R.string.error_unexpected_response));
+                return;
+            }
         } else {
             Sync.queue(this, server, bookId, original == null ? LocalStore.KIND_ADD : LocalStore.KIND_MODIFY,
                 original == null ? null : original.id, body, original == null ? null : original.json, labels);
@@ -2122,23 +2124,11 @@ public class TransactionEditActivity extends BaseActivity {
 
     /** A transaction added on this phone is simply dropped; one the server has is deleted there once it can be reached. */
     private void deleteQueued() {
-        if (LocalStore.KIND_ADD.equals(queued.kind)) {
-            LocalStore.get(this).remove(queued.id);
-        } else {
-            JSONObject body = new JSONObject();
-
-            try {
-                body.put("id", queued.transactionId);
-            } catch (JSONException ex) {
-                return;
-            }
-
-            queued.kind = LocalStore.KIND_DELETE;
-            queued.body = body;
-            queued.state = LocalStore.STATE_WAITING;
-            queued.message = null;
-            LocalStore.get(this).save(queued);
-            Sync.schedule(this);
+        try {
+            Sync.deleteEdit(this, server, queued);
+        } catch (JSONException ex) {
+            showMessage(getString(R.string.error_unexpected_response));
+            return;
         }
 
         Ui.dataChanged(getApplicationContext());

@@ -115,7 +115,7 @@ public class OverviewFragment extends Fragment implements Reloadable {
     /** Transactions saved on this phone that the server hasn't taken yet; ones that need a decision say so. */
     private void renderSync() {
         Server server = ServerStore.get(requireContext()).getActiveServer();
-        List<LocalStore.Change> changes = server == null ? java.util.Collections.emptyList() : LocalStore.get(requireContext()).changes(server.id);
+        List<LocalStore.Change> changes = server == null ? java.util.Collections.emptyList() : Sync.changes(requireContext(), server);
         syncCard.setVisibility(changes.isEmpty() ? View.GONE : View.VISIBLE);
         syncList.removeAllViews();
 

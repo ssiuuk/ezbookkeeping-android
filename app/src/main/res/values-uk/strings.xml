@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">Ви видалили цю операцію на цьому телефоні, але відтоді її змінено на сервері.</string>
     <string name="conflict_line">%1$s: ваша %2$s, на сервері %3$s</string>
     <string name="conflict_line_was_now">%1$s: було %2$s, стало %3$s</string>
-    <string name="conflict_other_fields">Проєкт або теги теж відрізняються.</string>
+    <string name="conflict_maybe_added">На сервері вже є така сама операція приблизно в той самий час. Можливо, це вона, надіслана раніше без відповіді, або інша.</string>
+    <string name="conflict_add_anyway">Однаково додати</string>
+    <string name="conflict_dont_add">Не додавати</string>
+    <string name="sync_state_maybe_added">Можливо, вже на сервері</string>
+    <string name="conflict_other_fields">Інші дані (проєкт, теги, чеки або місце) теж відрізняються.</string>
     <string name="conflict_keep_mine">Залишити мою</string>
     <string name="conflict_keep_servers">Залишити серверну</string>
     <string name="conflict_add_back">Додати мою знову</string>

@@ -42,7 +42,9 @@ public final class Sync {
     private static final int ERROR_TRANSACTION_NOT_FOUND = 205001;
     // the server may move a transaction's time by a few seconds when another one has the same second
     private static final long SAME_TIME_SECONDS = 120;
-    private static final String[] COMPARED = { "type", "categoryId", "time", "sourceAccountId", "sourceAmount", "comment", "merchant", "projectId" };
+    // the server recognizes a repeated add by its clientSessionId for 5 minutes by default; a little less to be safe
+    private static final long SERVER_REMEMBERS_MILLIS = 4 * 60 * 1000;
+    private static final String[] COMPARED = { "type", "categoryId", "sourceAccountId", "sourceAmount", "comment", "merchant", "projectId" };
 
     private static Runnable listener;
 
@@ -104,6 +106,21 @@ public final class Sync {
         }
     }
 
+    /** The user a change belongs to: changes are only sent with, and shown to, the user who made them. */
+    public static String userOf(Server server) {
+        return server.getUser().optString("username", "");
+    }
+
+    /** The signed-in user's changes for a server, oldest first. */
+    public static List<LocalStore.Change> changes(Context context, Server server) {
+        return LocalStore.get(context).changes(server.id, userOf(server));
+    }
+
+    /** The signed-in user's change waiting for one of the server's transactions, if any. */
+    public static LocalStore.Change changeFor(Context context, Server server, String transactionId) {
+        return LocalStore.get(context).changeFor(server.id, userOf(server), transactionId);
+    }
+
     /**
      * Saves a transaction added, changed or deleted while the server couldn't be reached. A later change to the same transaction
      * replaces the earlier one but keeps the server's version it started from.
@@ -111,11 +128,12 @@ public final class Sync {
     public static LocalStore.Change queue(Context context, Server server, String bookId, String kind, String transactionId,
                                           JSONObject body, JSONObject base, JSONObject labels) {
         LocalStore store = LocalStore.get(context);
-        LocalStore.Change change = transactionId == null ? null : store.changeFor(server.id, transactionId);
+        LocalStore.Change change = transactionId == null ? null : changeFor(context, server, transactionId);
 
         if (change == null) {
             change = new LocalStore.Change();
             change.serverId = server.id;
+            change.userName = userOf(server);
             change.transactionId = transactionId;
             change.base = base;
             change.createdAt = System.currentTimeMillis();
@@ -128,16 +146,87 @@ public final class Sync {
         change.state = LocalStore.STATE_WAITING;
         change.message = null;
         change.serverCopy = null;
-        store.save(change);
+
+        if (change.id == 0 || !store.update(change)) {
+            change.id = 0;
+            store.insert(change);
+        }
+
         schedule(context);
         return change;
+    }
+
+    /**
+     * Saves the user's new version of a change opened in the add screen. If it was sent while the screen was open, the new
+     * version becomes a change to the transaction the server made of it, so nothing typed is lost and nothing is added twice.
+     */
+    public static LocalStore.Change saveEdit(Context context, Server server, LocalStore.Change change, JSONObject body, JSONObject labels)
+        throws JSONException {
+        LocalStore store = LocalStore.get(context);
+        change.body = body;
+        change.labels = labels;
+        change.state = LocalStore.STATE_WAITING;
+        change.message = null;
+        change.serverCopy = null;
+        change.attempts = 0;
+
+        if (store.update(change)) {
+            schedule(context);
+            return change;
+        }
+
+        LocalStore.Sent sent = store.sent(change.id);
+
+        if (sent != null && sent.serverCopy != null) {
+            // sent while the screen was open: the edit changes the transaction the server has
+            body.remove("clientSessionId");
+            body.put("id", sent.transactionId);
+            return queue(context, server, change.bookId, LocalStore.KIND_MODIFY, sent.transactionId, body, sent.serverCopy, labels);
+        }
+
+        if (sent != null) {
+            // it turned out to be deleted on the server: the edit is added back
+            body.remove("id");
+            body.put("clientSessionId", UUID.randomUUID().toString());
+            return queue(context, server, change.bookId, LocalStore.KIND_ADD, null, body, null, labels);
+        }
+
+        // settled meanwhile by keeping the server's version, but the user saved theirs again, so theirs is sent
+        return queue(context, server, change.bookId, change.kind, change.transactionId, body, change.base, labels);
+    }
+
+    /** Deletes a change opened in the add screen: an add is dropped, anything else is deleted on the server once it answers. */
+    public static void deleteEdit(Context context, Server server, LocalStore.Change change) throws JSONException {
+        LocalStore store = LocalStore.get(context);
+        String transactionId = change.transactionId;
+        JSONObject base = change.base;
+
+        if (store.change(change.id) == null) {
+            // sent while the screen was open: delete what the server made of it
+            LocalStore.Sent sent = store.sent(change.id);
+
+            if (sent == null || sent.transactionId == null) {
+                return;
+            }
+
+            transactionId = sent.transactionId;
+            base = sent.serverCopy;
+        } else if (LocalStore.KIND_ADD.equals(change.kind)) {
+            store.remove(change.id);
+            // if it was on its way meanwhile, sending notices it is gone and deletes it again
+            return;
+        }
+
+        store.remove(change.id);
+        JSONObject body = new JSONObject().put("id", transactionId);
+        queue(context, server, change.bookId, LocalStore.KIND_DELETE, transactionId, body, base, change.labels);
     }
 
     /** Settles a conflict, or a change the server refused, with the phone's version: it is sent again. */
     public static void keepMine(Context context, LocalStore.Change change) {
         if (LocalStore.STATE_CONFLICT.equals(change.state)) {
-            if (change.serverCopy == null && LocalStore.KIND_MODIFY.equals(change.kind)) {
-                // deleted on the server: add it back as a new transaction
+            if (LocalStore.KIND_ADD.equals(change.kind) || (change.serverCopy == null && LocalStore.KIND_MODIFY.equals(change.kind))) {
+                // added anyway, as a new transaction; or deleted on the server and added back
                 change.kind = LocalStore.KIND_ADD;
                 change.transactionId = null;
                 change.base = null;
@@ -158,7 +247,8 @@ public final class Sync {
         change.serverCopy = null;
         change.message = null;
         change.attempts = 0;
-        LocalStore.get(context).save(change);
+        change.lastAttemptAt = 0;
+        LocalStore.get(context).update(change);
         schedule(context);
     }
 
@@ -184,8 +274,7 @@ public final class Sync {
             Server server = servers.findById(change.serverId);
 
             if (server == null) {
-                // the server was removed from the app
-                store.remove(change.id);
+                // removing a server removes its changes, so this one isn't in the app (yet)
                 continue;
             }
 
@@ -195,8 +284,15 @@ public final class Sync {
                 continue;
             }
 
+            if (!userOf(server).equals(change.userName)) {
+                // made by another user of this server: waits until they sign in again
+                continue;
+            }
+
+            Remote remote = new Api(server).inBackground().withBook(change.bookId)::call;
+
             try {
-                send(store, server, change);
+                send(store, change, remote, System.currentTimeMillis());
                 changed = true;
             } catch (ApiException ex) {
                 if (ex.unreachable) {
@@ -208,13 +304,13 @@ public final class Sync {
                 } else {
                     change.state = LocalStore.STATE_FAILED;
                     change.message = ex.getMessage();
-                    store.save(change);
+                    store.updateIfUnchanged(change);
                     changed = true;
                 }
             } catch (JSONException ex) {
                 change.state = LocalStore.STATE_FAILED;
                 change.message = Languages.localized(context).getString(R.string.error_unexpected_response);
-                store.save(change);
+                store.updateIfUnchanged(change);
                 changed = true;
             }
         }
@@ -232,53 +328,113 @@ public final class Sync {
         }
     }
 
-    private static void send(LocalStore store, Server server, LocalStore.Change change) throws ApiException, JSONException {
-        Api api = new Api(server).inBackground().withBook(change.bookId);
+    /** How a change reaches the server; the app's Api, or a stand-in in tests. */
+    interface Remote {
+        Object call(String method, String path, java.util.Map<String, String> query, JSONObject body) throws ApiException, JSONException;
+    }
 
+    /** Sends one change. Every write checks that the user didn't edit it meanwhile, since the add screen may be open on it. */
+    static void send(LocalStore store, LocalStore.Change change, Remote remote, long now) throws ApiException, JSONException {
         switch (change.kind) {
-            case LocalStore.KIND_ADD:
-                // an earlier try may have reached the server even though no answer came back
-                if (change.attempts > 0 && alreadyAdded(api, change.body)) {
-                    store.remove(change.id);
-                    return;
+            case LocalStore.KIND_ADD: {
+                // an earlier try may have reached the server even though no answer came back. Within the server's own
+                // duplicate check the same clientSessionId gets that transaction back; after it, a transaction like this one
+                // may be it or a separate purchase, so the user decides instead of the app.
+                if (change.attempts > 0 && now - change.lastAttemptAt > SERVER_REMEMBERS_MILLIS) {
+                    JSONObject similar = findSimilar(remote, change.body);
+
+                    if (similar != null) {
+                        conflict(store, change, similar);
+                        return;
+                    }
                 }
 
                 change.attempts++;
-                store.save(change);
-                api.call("POST", "v1/transactions/add.json", null, change.body);
-                store.remove(change.id);
+                change.lastAttemptAt = now;
+
+                if (!store.updateIfUnchanged(change)) {
+                    // edited meanwhile; the newer version goes in the next round
+                    return;
+                }
+
+                Object result = remote.call("POST", "v1/transactions/add.json", null, change.body);
+                JSONObject added = result instanceof JSONObject ? (JSONObject) result : null;
+                String transactionId = added == null ? null : added.optString("id", null);
+                store.markSent(change, transactionId, added);
+
+                if (!store.removeIfUnchanged(change) && transactionId != null) {
+                    LocalStore.Change latest = store.change(change.id);
+
+                    if (latest == null) {
+                        // deleted on the phone while it was on its way: delete it on the server too
+                        latest = new LocalStore.Change();
+                        latest.serverId = change.serverId;
+                        latest.userName = change.userName;
+                        latest.bookId = change.bookId;
+                        latest.kind = LocalStore.KIND_DELETE;
+                        latest.transactionId = transactionId;
+                        latest.body = new JSONObject().put("id", transactionId);
+                        latest.base = added;
+                        latest.labels = change.labels;
+                        latest.createdAt = now;
+                        store.insert(latest);
+                    } else {
+                        // edited while it was on its way: the newer version changes the transaction the server just made
+                        latest.kind = LocalStore.KIND_MODIFY;
+                        latest.transactionId = transactionId;
+                        latest.base = added;
+                        latest.body.remove("clientSessionId");
+                        latest.body.put("id", transactionId);
+                        latest.attempts = 0;
+                        store.updateIfUnchanged(latest);
+                    }
+                }
+
                 return;
+            }
 
             case LocalStore.KIND_MODIFY: {
-                JSONObject current = fetch(api, change.transactionId);
+                JSONObject current = fetch(remote, change.transactionId);
 
                 if (current == null) {
                     conflict(store, change, null);
                 } else if (same(current, change.body)) {
-                    store.remove(change.id);
+                    store.markSent(change, change.transactionId, current);
+                    store.removeIfUnchanged(change);
                 } else if (change.base != null && !same(current, change.base)) {
                     conflict(store, change, current);
                 } else {
-                    api.call("POST", "v1/transactions/modify.json", null, change.body);
-                    store.remove(change.id);
+                    Object result = remote.call("POST", "v1/transactions/modify.json", null, change.body);
+                    JSONObject modified = result instanceof JSONObject ? (JSONObject) result : null;
+                    store.markSent(change, change.transactionId, modified);
+
+                    if (!store.removeIfUnchanged(change)) {
+                        // edited while it was on its way: the newer version changes what the server has now
+                        LocalStore.Change latest = store.change(change.id);
+
+                        if (latest != null && modified != null) {
+                            latest.base = modified;
+                            store.updateIfUnchanged(latest);
+                        }
+                    }
                 }
 
                 return;
             }
 
             case LocalStore.KIND_DELETE: {
-                JSONObject current = fetch(api, change.transactionId);
+                JSONObject current = fetch(remote, change.transactionId);
 
                 if (current == null) {
                     // already gone
-                    store.remove(change.id);
+                    store.markSent(change, change.transactionId, null);
+                    store.removeIfUnchanged(change);
                 } else if (change.base != null && !same(current, change.base)) {
                     conflict(store, change, current);
                 } else {
-                    JSONObject body = new JSONObject();
-                    body.put("id", change.transactionId);
-                    api.call("POST", "v1/transactions/delete.json", null, body);
-                    store.remove(change.id);
+                    remote.call("POST", "v1/transactions/delete.json", null, new JSONObject().put("id", change.transactionId));
+                    store.markSent(change, change.transactionId, null);
+                    store.removeIfUnchanged(change);
                 }
 
                 return;
@@ -293,13 +449,13 @@ public final class Sync {
         change.state = LocalStore.STATE_CONFLICT;
         change.serverCopy = serverCopy;
         change.message = null;
-        store.save(change);
+        store.updateIfUnchanged(change);
     }
 
     /** The server's version of a transaction, or null when it no longer has it. */
-    private static JSONObject fetch(Api api, String transactionId) throws ApiException, JSONException {
+    private static JSONObject fetch(Remote remote, String transactionId) throws ApiException, JSONException {
         try {
-            Object result = api.call("GET", "v1/transactions/get.json",
+            Object result = remote.call("GET", "v1/transactions/get.json",
                 Api.query("id", transactionId, "trim_account", "false", "trim_category", "false", "trim_tag", "false"), null);
             return result instanceof JSONObject ? (JSONObject) result : null;
         } catch (ApiException ex) {
@@ -311,12 +467,12 @@ public final class Sync {
         }
     }
 
-    /** Whether the server already has this new transaction: same type, account, category, amount and note, at about the same time. */
-    private static boolean alreadyAdded(Api api, JSONObject body) throws ApiException, JSONException {
+    /** A transaction on the server that says the same as this new one, at about the same time, or null. */
+    private static JSONObject findSimilar(Remote remote, JSONObject body) throws ApiException, JSONException {
         long time = body.optLong("time");
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(time * 1000);
-        Object result = api.call("GET", "v1/transactions/list/by_month.json", Api.query(
+        Object result = remote.call("GET", "v1/transactions/list/by_month.json", Api.query(
             "year", String.valueOf(calendar.get(Calendar.YEAR)),
             "month", String.valueOf(calendar.get(Calendar.MONTH) + 1),
             "type", body.optString("type"),
@@ -326,20 +482,23 @@ public final class Sync {
         for (int i = 0; items != null && i < items.length(); i++) {
             JSONObject item = items.optJSONObject(i);
 
-            if (item != null && Math.abs(item.optLong("time") - time) <= SAME_TIME_SECONDS
-                && item.optString("sourceAccountId").equals(body.optString("sourceAccountId"))
-                && item.optString("categoryId").equals(body.optString("categoryId"))
-                && item.optLong("sourceAmount") == body.optLong("sourceAmount")
-                && item.optString("comment", "").equals(body.optString("comment", ""))) {
-                return true;
+            if (item != null && Math.abs(item.optLong("time") - time) <= SAME_TIME_SECONDS && same(item, body, false)) {
+                return item;
             }
         }
 
-        return false;
+        return null;
     }
 
-    /** Whether two versions of a transaction say the same, in the fields this app shows and edits. */
+    /**
+     * Whether two versions of a transaction say the same: what this app shows and edits, and what it sends without showing
+     * (receipts, hidden amount, time zone and location). Either may be the server's JSON or what add or modify.json is sent.
+     */
     public static boolean same(JSONObject a, JSONObject b) {
+        return same(a, b, true);
+    }
+
+    private static boolean same(JSONObject a, JSONObject b, boolean exactTime) {
         for (String key : COMPARED) {
             if (!value(a, key).equals(value(b, key))) {
                 return false;
@@ -352,7 +511,20 @@ public final class Sync {
             return false;
         }
 
-        return tagIds(a).equals(tagIds(b));
+        if (!tagIds(a).equals(tagIds(b))) {
+            return false;
+        }
+
+        if (!exactTime) {
+            // a list of the month only has the fields above
+            return true;
+        }
+
+        return value(a, "time").equals(value(b, "time"))
+            && pictureIds(a).equals(pictureIds(b))
+            && a.optBoolean("hideAmount") == b.optBoolean("hideAmount")
+            && a.optInt("utcOffset") == b.optInt("utcOffset")
+            && geoLocation(a).equals(geoLocation(b));
     }
 
     /** The fields that differ, in the order the add screen shows them. */
@@ -374,6 +546,14 @@ public final class Sync {
             keys.add("tagIds");
         }
 
+        if (!pictureIds(mine).equals(pictureIds(servers))) {
+            keys.add("pictureIds");
+        }
+
+        if (mine.optBoolean("hideAmount") != servers.optBoolean("hideAmount") || !geoLocation(mine).equals(geoLocation(servers))) {
+            keys.add("other");
+        }
+
         return keys;
     }
 
@@ -381,6 +561,33 @@ public final class Sync {
         String fallback = key.endsWith("Id") || key.endsWith("Amount") ? "0" : "";
         String value = json.optString(key, fallback);
         return value.isEmpty() ? fallback : value.trim();
+    }
+
+    /** Receipt ids, from what is sent ("pictureIds") or from the server's "pictures". */
+    private static List<String> pictureIds(JSONObject json) {
+        List<String> ids = new ArrayList<>();
+        JSONArray sentIds = json.optJSONArray("pictureIds");
+        JSONArray pictures = json.optJSONArray("pictures");
+
+        for (int i = 0; sentIds != null && i < sentIds.length(); i++) {
+            ids.add(sentIds.optString(i));
+        }
+
+        for (int i = 0; sentIds == null && pictures != null && i < pictures.length(); i++) {
+            JSONObject picture = pictures.optJSONObject(i);
+
+            if (picture != null) {
+                ids.add(picture.optString("pictureId"));
+            }
+        }
+
+        Collections.sort(ids);
+        return ids;
+    }
+
+    private static String geoLocation(JSONObject json) {
+        JSONObject location = json.optJSONObject("geoLocation");
+        return location == null ? "" : location.optDouble("latitude", 0) + "," + location.optDouble("longitude", 0);
     }
 
     private static List<String> tagIds(JSONObject json) {

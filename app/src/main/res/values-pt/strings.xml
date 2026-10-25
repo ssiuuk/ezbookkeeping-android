@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">Você excluiu esta transação neste telefone, mas ela foi alterada no servidor desde então.</string>
     <string name="conflict_line">%1$s: a sua %2$s, a do servidor %3$s</string>
     <string name="conflict_line_was_now">%1$s: era %2$s, agora %3$s</string>
-    <string name="conflict_other_fields">O projeto ou as tags também são diferentes.</string>
+    <string name="conflict_maybe_added">O servidor já tem uma transação como esta, mais ou menos no mesmo horário. Pode ser esta, enviada antes sem resposta, ou outra.</string>
+    <string name="conflict_add_anyway">Adicionar mesmo assim</string>
+    <string name="conflict_dont_add">Não adicionar</string>
+    <string name="sync_state_maybe_added">Talvez já esteja no servidor</string>
+    <string name="conflict_other_fields">Outros detalhes (projeto, tags, recibos ou local) também são diferentes.</string>
     <string name="conflict_keep_mine">Manter a minha</string>
     <string name="conflict_keep_servers">Manter a do servidor</string>
     <string name="conflict_add_back">Adicionar a minha de novo</string>

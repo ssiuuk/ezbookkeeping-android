@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">Bạn đã xóa giao dịch này trên điện thoại này, nhưng sau đó nó đã được sửa trên máy chủ.</string>
     <string name="conflict_line">%1$s: của bạn %2$s, của máy chủ %3$s</string>
     <string name="conflict_line_was_now">%1$s: trước %2$s, nay %3$s</string>
-    <string name="conflict_other_fields">Dự án hoặc thẻ cũng khác nhau.</string>
+    <string name="conflict_maybe_added">Máy chủ đã có một giao dịch giống thế này vào khoảng cùng thời điểm. Có thể là chính giao dịch này, đã gửi trước đó mà không nhận được phản hồi, hoặc một giao dịch khác.</string>
+    <string name="conflict_add_anyway">Vẫn thêm</string>
+    <string name="conflict_dont_add">Không thêm</string>
+    <string name="sync_state_maybe_added">Có thể đã có trên máy chủ</string>
+    <string name="conflict_other_fields">Các chi tiết khác (dự án, thẻ, hóa đơn hoặc vị trí) cũng khác nhau.</string>
     <string name="conflict_keep_mine">Giữ của tôi</string>
     <string name="conflict_keep_servers">Giữ của máy chủ</string>
     <string name="conflict_add_back">Thêm lại của tôi</string>

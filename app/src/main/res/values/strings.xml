@@ -251,7 +251,11 @@
     <string name="conflict_deleted_here">You deleted this transaction on this phone, but it was changed on the server since.</string>
     <string name="conflict_line">%1$s: yours %2$s, the server\'s %3$s</string>
     <string name="conflict_line_was_now">%1$s: was %2$s, now %3$s</string>
-    <string name="conflict_other_fields">The project or tags differ too.</string>
+    <string name="conflict_maybe_added">The server already has a transaction like this one, at about the same time. It may be this one, sent earlier when no answer came back, or a separate one.</string>
+    <string name="conflict_add_anyway">Add it anyway</string>
+    <string name="conflict_dont_add">Don\'t add it</string>
+    <string name="sync_state_maybe_added">May already be on the server</string>
+    <string name="conflict_other_fields">Other details (project, tags, receipts or location) differ too.</string>
     <string name="conflict_keep_mine">Keep mine</string>
     <string name="conflict_keep_servers">Keep the server\'s</string>
     <string name="conflict_add_back">Add mine back</string>

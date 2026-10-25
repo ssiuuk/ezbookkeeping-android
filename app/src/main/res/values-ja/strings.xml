@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">この端末でこの取引を削除しましたが、その後サーバーで変更されています。</string>
     <string name="conflict_line">%1$s: この端末 %2$s、サーバー %3$s</string>
     <string name="conflict_line_was_now">%1$s: 変更前 %2$s、現在 %3$s</string>
-    <string name="conflict_other_fields">プロジェクトまたはタグも異なります。</string>
+    <string name="conflict_maybe_added">サーバーには、ほぼ同じ時刻のよく似た取引がすでにあります。以前応答がないまま送信されたこの取引か、別の取引の可能性があります。</string>
+    <string name="conflict_add_anyway">それでも追加する</string>
+    <string name="conflict_dont_add">追加しない</string>
+    <string name="sync_state_maybe_added">すでにサーバーにあるかもしれません</string>
+    <string name="conflict_other_fields">その他の内容（プロジェクト、タグ、レシート、位置情報）も異なります。</string>
     <string name="conflict_keep_mine">この端末の内容を残す</string>
     <string name="conflict_keep_servers">サーバーの内容を残す</string>
     <string name="conflict_add_back">この端末の内容を追加し直す</string>

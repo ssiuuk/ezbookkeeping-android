@@ -54,6 +54,10 @@ final class ChangeViews {
     static String stateText(Context context, LocalStore.Change change) {
         switch (change.state) {
             case LocalStore.STATE_CONFLICT:
+                if (LocalStore.KIND_ADD.equals(change.kind)) {
+                    return context.getString(R.string.sync_state_maybe_added);
+                }
+
                 return context.getString(change.serverCopy == null ? R.string.sync_state_deleted_on_server : R.string.sync_state_conflict);
             case LocalStore.STATE_FAILED:
                 return context.getString(R.string.sync_state_failed);
@@ -85,7 +89,12 @@ final class ChangeViews {
             .setTitle(R.string.conflict_title)
             .setNeutralButton(R.string.cancel, null);
 
-        if (change.serverCopy == null) {
+        if (LocalStore.KIND_ADD.equals(change.kind)) {
+            // the server has one like it, which may be this one sent earlier without an answer, or a separate purchase
+            dialog.setMessage(R.string.conflict_maybe_added)
+                .setPositiveButton(R.string.conflict_add_anyway, (d, which) -> settle(activity, change, true, changed))
+                .setNegativeButton(R.string.conflict_dont_add, (d, which) -> settle(activity, change, false, changed));
+        } else if (change.serverCopy == null) {
             // changed here, deleted there
             dialog.setMessage(R.string.conflict_deleted_on_server)
                 .setPositiveButton(R.string.conflict_add_back, (d, which) -> settle(activity, change, true, changed))

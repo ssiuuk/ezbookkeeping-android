@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">คุณลบรายการนี้ในโทรศัพท์นี้ แต่หลังจากนั้นรายการถูกเปลี่ยนในเซิร์ฟเวอร์</string>
     <string name="conflict_line">%1$s: ของคุณ %2$s, ของเซิร์ฟเวอร์ %3$s</string>
     <string name="conflict_line_was_now">%1$s: เดิม %2$s, ตอนนี้ %3$s</string>
-    <string name="conflict_other_fields">โครงการหรือแท็กก็ต่างกันด้วย</string>
+    <string name="conflict_maybe_added">เซิร์ฟเวอร์มีรายการแบบนี้อยู่แล้วในเวลาใกล้เคียงกัน อาจเป็นรายการนี้ที่ส่งไปก่อนหน้าแต่ไม่ได้รับคำตอบ หรือเป็นอีกรายการหนึ่ง</string>
+    <string name="conflict_add_anyway">เพิ่มต่อไป</string>
+    <string name="conflict_dont_add">ไม่เพิ่ม</string>
+    <string name="sync_state_maybe_added">อาจอยู่บนเซิร์ฟเวอร์แล้ว</string>
+    <string name="conflict_other_fields">รายละเอียดอื่น (โครงการ แท็ก ใบเสร็จ หรือตำแหน่ง) ก็ต่างกันด้วย</string>
     <string name="conflict_keep_mine">เก็บของฉัน</string>
     <string name="conflict_keep_servers">เก็บของเซิร์ฟเวอร์</string>
     <string name="conflict_add_back">เพิ่มของฉันกลับเข้าไป</string>

@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">ನೀವು ಈ ವಹಿವಾಟನ್ನು ಈ ಫೋನ್‌ನಲ್ಲಿ ಅಳಿಸಿದ್ದೀರಿ, ಆದರೆ ನಂತರ ಅದು ಸರ್ವರ್‌ನಲ್ಲಿ ಬದಲಾಗಿದೆ.</string>
     <string name="conflict_line">%1$s: ನಿಮ್ಮದು %2$s, ಸರ್ವರ್‌ನದು %3$s</string>
     <string name="conflict_line_was_now">%1$s: ಹಿಂದೆ %2$s, ಈಗ %3$s</string>
-    <string name="conflict_other_fields">ಯೋಜನೆ ಅಥವಾ ಟ್ಯಾಗ್‌ಗಳೂ ಬೇರೆಯಾಗಿವೆ.</string>
+    <string name="conflict_maybe_added">ಸುಮಾರು ಅದೇ ಸಮಯದ ಇಂತಹದೇ ವಹಿವಾಟು ಸರ್ವರ್‌ನಲ್ಲಿ ಈಗಾಗಲೇ ಇದೆ. ಇದು ಉತ್ತರ ಬಾರದೆ ಹಿಂದೆ ಕಳುಹಿಸಿದ ಇದೇ ಆಗಿರಬಹುದು, ಅಥವಾ ಬೇರೆಯದು.</string>
+    <string name="conflict_add_anyway">ಆದರೂ ಸೇರಿಸಿ</string>
+    <string name="conflict_dont_add">ಸೇರಿಸಬೇಡಿ</string>
+    <string name="sync_state_maybe_added">ಈಗಾಗಲೇ ಸರ್ವರ್‌ನಲ್ಲಿರಬಹುದು</string>
+    <string name="conflict_other_fields">ಇತರ ವಿವರಗಳೂ (ಯೋಜನೆ, ಟ್ಯಾಗ್‌ಗಳು, ರಸೀದಿಗಳು ಅಥವಾ ಸ್ಥಳ) ಬೇರೆಯಾಗಿವೆ.</string>
     <string name="conflict_keep_mine">ನನ್ನದನ್ನು ಉಳಿಸಿ</string>
     <string name="conflict_keep_servers">ಸರ್ವರ್‌ನದನ್ನು ಉಳಿಸಿ</string>
     <string name="conflict_add_back">ನನ್ನದನ್ನು ಮತ್ತೆ ಸೇರಿಸಿ</string>

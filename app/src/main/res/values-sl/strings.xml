@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">To transakcijo ste izbrisali na tem telefonu, vendar je bila medtem spremenjena na strežniku.</string>
     <string name="conflict_line">%1$s: vaša %2$s, strežnikova %3$s</string>
     <string name="conflict_line_was_now">%1$s: prej %2$s, zdaj %3$s</string>
-    <string name="conflict_other_fields">Razlikujejo se tudi projekt ali oznake.</string>
+    <string name="conflict_maybe_added">Strežnik že ima takšno transakcijo ob približno istem času. Morda je to ta, poslana prej brez odgovora, ali druga.</string>
+    <string name="conflict_add_anyway">Vseeno dodaj</string>
+    <string name="conflict_dont_add">Ne dodaj</string>
+    <string name="sync_state_maybe_added">Morda je že na strežniku</string>
+    <string name="conflict_other_fields">Razlikujejo se tudi druge podrobnosti (projekt, oznake, računi ali lokacija).</string>
     <string name="conflict_keep_mine">Ohrani mojo</string>
     <string name="conflict_keep_servers">Ohrani strežnikovo</string>
     <string name="conflict_add_back">Znova dodaj mojo</string>

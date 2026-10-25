@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">你在本機刪除了這筆交易，但之後它在伺服器上被修改了。</string>
     <string name="conflict_line">%1$s：你的 %2$s，伺服器的 %3$s</string>
     <string name="conflict_line_was_now">%1$s：原為 %2$s，現為 %3$s</string>
-    <string name="conflict_other_fields">專案或標籤也不同。</string>
+    <string name="conflict_maybe_added">伺服器上已有一筆時間相近的類似交易。它可能就是之前傳送但未收到回應的這一筆，也可能是另一筆。</string>
+    <string name="conflict_add_anyway">仍然新增</string>
+    <string name="conflict_dont_add">不新增</string>
+    <string name="sync_state_maybe_added">可能已在伺服器上</string>
+    <string name="conflict_other_fields">其他資訊（專案、標籤、收據或位置）也不同。</string>
     <string name="conflict_keep_mine">保留我的</string>
     <string name="conflict_keep_servers">保留伺服器的</string>
     <string name="conflict_add_back">重新新增我的</string>

@@ -223,7 +223,11 @@
     <string name="conflict_deleted_here">Bu işlemi bu telefonda sildiniz, ancak o zamandan beri sunucuda değiştirildi.</string>
     <string name="conflict_line">%1$s: sizinki %2$s, sunucununki %3$s</string>
     <string name="conflict_line_was_now">%1$s: önce %2$s, şimdi %3$s</string>
-    <string name="conflict_other_fields">Proje veya etiketler de farklı.</string>
+    <string name="conflict_maybe_added">Sunucuda yaklaşık aynı saatte buna benzer bir işlem zaten var. Daha önce yanıt alınmadan gönderilen bu işlem ya da başka bir işlem olabilir.</string>
+    <string name="conflict_add_anyway">Yine de ekle</string>
+    <string name="conflict_dont_add">Ekleme</string>
+    <string name="sync_state_maybe_added">Sunucuda zaten olabilir</string>
+    <string name="conflict_other_fields">Diğer ayrıntılar (proje, etiketler, fişler veya konum) da farklı.</string>
     <string name="conflict_keep_mine">Benimki kalsın</string>
     <string name="conflict_keep_servers">Sunucununki kalsın</string>
     <string name="conflict_add_back">Benimkini yeniden ekle</string>
