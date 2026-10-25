@@ -271,6 +271,8 @@ public class ScreenshotTest {
                 // the widget follows the app's language and shows this month's spending once it has loaded
                 find(By.res(packageName, "label").textStartsWith("本月"));
                 device.wait(Until.gone(By.res(packageName, "spent").text("…")), TIMEOUT);
+                // two rows tall, so the launcher must pick the layout with the other figures, not the one-row one
+                find(By.res(packageName, "stat1"));
                 settle();
                 shot("23-widget");
             }

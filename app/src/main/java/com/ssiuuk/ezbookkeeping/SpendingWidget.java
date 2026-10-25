@@ -59,7 +59,9 @@ public class SpendingWidget extends AppWidgetProvider {
     private static final int FOOTER_MIN_HEIGHT = 152;
     private static final int ROWS_MIN_HEIGHT = 160;
     private static final int ROW_HEIGHT = 36;
-    private static final int[][] SIZES = { { 110, 40 }, { 250, 40 }, { 110, 110 }, { 110, 152 }, { 110, 196 }, { 110, 232 }, { 110, 268 }, { 110, 304 }, { 110, 340 } };
+    // the launcher uses the fitting size closest to the widget's, so each height comes in a narrow and a wide version (16 at most)
+    private static final int[] WIDTHS = { 110, 250 };
+    private static final int[] HEIGHTS = { 40, 110, 152, 196, 232, 268, 304, 340 };
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final Runnable REFRESH_ALL = SpendingWidget::refreshAllNow;
@@ -304,11 +306,13 @@ public class SpendingWidget extends AppWidgetProvider {
         RemoteViews views;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // the launcher picks the largest layout that fits, also while the widget is being resized
+            // the launcher picks the layout that fits, also while the widget is being resized
             Map<SizeF, RemoteViews> layouts = new LinkedHashMap<>();
 
-            for (int[] size : SIZES) {
-                layouts.put(new SizeF(size[0], size[1]), build(context, widgetId, size[0], size[1]));
+            for (int height : HEIGHTS) {
+                for (int width : WIDTHS) {
+                    layouts.put(new SizeF(width, height), build(context, widgetId, width, height));
+                }
             }
 
             views = new RemoteViews(layouts);
