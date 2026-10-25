@@ -20,10 +20,11 @@ import androidx.appcompat.app.AppCompatDelegate;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.ssiuuk.ezbookkeeping.data.Api;
 import com.ssiuuk.ezbookkeeping.data.ApiException;
+import com.ssiuuk.ezbookkeeping.data.Languages;
 import com.ssiuuk.ezbookkeeping.data.Server;
 import com.ssiuuk.ezbookkeeping.data.ServerStore;
 
-/** App settings: which server to use, sign-out, Wallet purchases, theme and version. */
+/** App settings: which server to use, sign-out, Wallet purchases, language, theme and version. */
 public class SettingsActivity extends BaseActivity {
     private LinearLayout container;
 
@@ -65,6 +66,7 @@ public class SettingsActivity extends BaseActivity {
         boolean capturing = PaymentListenerService.hasAccess(this);
         addItem(R.drawable.ic_wallet, getString(R.string.payment_capture), getString(capturing ? R.string.payment_capture_on : R.string.payment_capture_off),
             view -> explainPaymentCapture(capturing));
+        addItem(R.drawable.ic_language, getString(R.string.language), languageName(), view -> chooseLanguage());
         addItem(R.drawable.ic_dark_mode, getString(R.string.theme), themeName(store.getThemeMode()), view -> chooseTheme());
         addItem(R.drawable.ic_info, getString(R.string.about), getString(R.string.version, versionName()), null);
     }
@@ -117,6 +119,39 @@ public class SettingsActivity extends BaseActivity {
                 AppCompatDelegate.setDefaultNightMode(modes[which]);
             })
             .show();
+    }
+
+    /** The server's languages; the screens are recreated in the new one. */
+    private void chooseLanguage() {
+        String[] tags = new String[Languages.TAGS.length + 1];
+        String[] names = new String[tags.length];
+        String current = Languages.current(this);
+        int checked = 0;
+        tags[0] = "";
+        names[0] = getString(R.string.language_system);
+
+        for (int i = 0; i < Languages.TAGS.length; i++) {
+            tags[i + 1] = Languages.TAGS[i];
+            names[i + 1] = Languages.NAMES[i];
+
+            if (Languages.TAGS[i].equals(current)) {
+                checked = i + 1;
+            }
+        }
+
+        new MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.language)
+            .setSingleChoiceItems(names, checked, (dialog, which) -> {
+                dialog.dismiss();
+                Languages.choose(this, tags[which]);
+                SpendingWidget.refreshAll(this);
+            })
+            .show();
+    }
+
+    private String languageName() {
+        String current = Languages.current(this);
+        return current.isEmpty() ? getString(R.string.language_system) : Languages.name(current);
     }
 
     private String themeName(int mode) {

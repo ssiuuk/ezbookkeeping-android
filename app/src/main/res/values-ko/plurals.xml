@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="server_count">
+        <item quantity="other">서버 %1$d개</item>
+    </plurals>
+    <plurals name="to_review_count">
+        <item quantity="other">검토할 결제 %d건</item>
+    </plurals>
+    <plurals name="widget_review_count">
+        <item quantity="other">검토 %d건</item>
+    </plurals>
+</resources>

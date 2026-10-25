@@ -66,7 +66,7 @@ public class AccountsFragment extends Fragment implements Reloadable {
 
     @Override
     public void reloadIfStale() {
-        if (loadedVersion != Ui.dataVersion && isAdded()) {
+        if (loadedVersion != Ui.dataVersion && getView() != null) {
             load();
         }
     }

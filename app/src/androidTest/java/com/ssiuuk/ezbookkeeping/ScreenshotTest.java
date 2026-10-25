@@ -1,5 +1,7 @@
 package com.ssiuuk.ezbookkeeping;
 
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -22,6 +24,7 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.regex.Pattern;
 
 /**
  * Walks through the main screens against a seeded test server and saves a screenshot of each,
@@ -245,6 +248,34 @@ public class ScreenshotTest {
             if (!device.wait(Until.gone(By.textContains("Lunch")), TIMEOUT)) {
                 throw new AssertionError("The moved transaction is still in my book");
             }
+
+            // the app in Simplified Chinese, chosen in its own settings
+            tap(By.res(packageName, "action_settings"));
+            tap(By.text("Language"));
+            scrollDialogTo(By.text("简体中文")).click();
+            find(By.text("语言"));
+            settle();
+            shot("21-settings-chinese");
+            backTo(By.res(packageName, "nav_overview")).click();
+            find(By.text("本月"));
+            settle();
+            shot("22-overview-chinese");
+
+            // the Spending widget on the home screen, added at its default size of four columns by two rows
+            AppWidgetManager widgets = AppWidgetManager.getInstance(context);
+
+            if (widgets.isRequestPinAppWidgetSupported()) {
+                widgets.requestPinAppWidget(new ComponentName(context, SpendingWidget.class), null, null);
+                tap(By.clickable(true).text(Pattern.compile("(?i)add( to home screen)?")));
+                device.pressHome();
+                // the widget follows the app's language and shows this month's spending once it has loaded
+                find(By.res(packageName, "label").textStartsWith("本月"));
+                device.wait(Until.gone(By.res(packageName, "spent").text("…")), TIMEOUT);
+                // two rows tall, so the launcher must pick the layout with the other figures, not the one-row one
+                find(By.res(packageName, "stat1"));
+                settle();
+                shot("23-widget");
+            }
         } catch (Throwable error) {
             shot("99-failure");
             device.dumpWindowHierarchy(new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalCacheDir(), "hierarchy.xml"));
@@ -257,8 +288,23 @@ public class ScreenshotTest {
     private UiObject2 backTo(BySelector selector) {
         for (int i = 0; i < 3; i++) {
             dismissSystemDialogs();
-            device.pressBack();
-            UiObject2 found = device.wait(Until.findObject(selector), 3000);
+            UiObject2 found = device.findObject(selector);
+
+            if (found != null) {
+                return found;
+            }
+
+            if (packageName.equals(device.getCurrentPackageName())) {
+                device.pressBack();
+            } else {
+                // a dialog took a press meant for the app, or one press too many left it; bring it back as it was
+                Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+                Intent intent = context.getPackageManager().getLaunchIntentForPackage(packageName);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+            }
+
+            found = device.wait(Until.findObject(selector), 3000);
 
             if (found != null) {
                 return found;
@@ -268,7 +314,23 @@ public class ScreenshotTest {
         return find(selector);
     }
 
-    /** Scrolls the form until the field is on screen, since the add screen is taller than the phone. */
+    /** Scrolls the list of a single-choice dialog, such as the language list, until the selector shows. */
+    private UiObject2 scrollDialogTo(BySelector selector) {
+        UiObject2 found = device.wait(Until.findObject(selector), 3000);
+
+        for (int i = 0; i < 6 && found == null; i++) {
+            find(By.scrollable(true)).scroll(Direction.DOWN, 0.8f);
+            device.waitForIdle();
+            found = device.findObject(selector);
+        }
+
+        if (found == null) {
+            throw new AssertionError("Not found in the dialog: " + selector);
+        }
+
+        return found;
+    }
+
     /** Scrolls the list in the choice sheet with the given title until the selector shows. */
     private UiObject2 scrollSheetTo(String title, BySelector selector) {
         find(By.text(title));
@@ -294,6 +356,7 @@ public class ScreenshotTest {
         return found;
     }
 
+    /** Scrolls the form until the field is on screen, since the add screen is taller than the phone. */
     private UiObject2 scrollTo(BySelector selector) {
         UiObject2 scroll = find(By.res(packageName, "scroll"));
         UiObject2 found = device.findObject(selector);

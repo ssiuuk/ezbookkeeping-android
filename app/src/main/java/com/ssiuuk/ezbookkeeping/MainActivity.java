@@ -325,7 +325,7 @@ public class MainActivity extends BaseActivity {
         server.bookName = book == null ? null : book.name;
         ServerStore.get(this).update(server);
         updateSubtitle();
-        Ui.dataChanged();
+        Ui.dataChanged(getApplicationContext());
 
         Fragment fragment = getSupportFragmentManager().findFragmentByTag("tab" + currentTab);
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="server_count">
+        <item quantity="one">%1$d Server</item>
+        <item quantity="other">%1$d Server</item>
+    </plurals>
+    <plurals name="to_review_count">
+        <item quantity="one">%d Zahlung zu prüfen</item>
+        <item quantity="other">%d Zahlungen zu prüfen</item>
+    </plurals>
+    <plurals name="widget_review_count">
+        <item quantity="one">%d zu prüfen</item>
+        <item quantity="other">%d zu prüfen</item>
+    </plurals>
+</resources>

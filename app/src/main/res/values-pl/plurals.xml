@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="server_count">
+        <item quantity="one">%1$d serwer</item>
+        <item quantity="few">%1$d serwery</item>
+        <item quantity="many">%1$d serwerów</item>
+        <item quantity="other">%1$d serwera</item>
+    </plurals>
+    <plurals name="to_review_count">
+        <item quantity="one">%d zakup do sprawdzenia</item>
+        <item quantity="few">%d zakupy do sprawdzenia</item>
+        <item quantity="many">%d zakupów do sprawdzenia</item>
+        <item quantity="other">%d zakupu do sprawdzenia</item>
+    </plurals>
+    <plurals name="widget_review_count">
+        <item quantity="one">%d do sprawdzenia</item>
+        <item quantity="few">%d do sprawdzenia</item>
+        <item quantity="many">%d do sprawdzenia</item>
+        <item quantity="other">%d do sprawdzenia</item>
+    </plurals>
+</resources>

@@ -22,8 +22,6 @@ import com.ssiuuk.ezbookkeeping.data.PendingPayments;
 import com.ssiuuk.ezbookkeeping.data.Server;
 import com.ssiuuk.ezbookkeeping.data.ServerStore;
 
-import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -84,13 +82,16 @@ public class OverviewFragment extends Fragment implements Reloadable {
 
     @Override
     public void reloadIfStale() {
-        if (loadedVersion != Ui.dataVersion && isAdded()) {
+        // a fragment restored while the activity is recreated (after a language change, say) has no views yet; onResume catches up
+        if (getView() == null) {
+            return;
+        }
+
+        if (loadedVersion != Ui.dataVersion) {
             load();
         }
 
-        if (isAdded()) {
-            renderReview();
-        }
+        renderReview();
     }
 
     /** Purchases picked up from Wallet, waiting to be saved; tapping one opens it in the add screen. */
@@ -129,10 +130,12 @@ public class OverviewFragment extends Fragment implements Reloadable {
 
     private void dismiss(PendingPayments.Item item) {
         PendingPayments.remove(requireContext(), item.id);
+        SpendingWidget.refreshAll(requireContext());
         renderReview();
         Snackbar.make(refresh, R.string.purchase_dismissed, Snackbar.LENGTH_LONG).setAction(R.string.undo, v -> {
             if (isAdded()) {
                 PendingPayments.restore(requireContext(), item);
+                SpendingWidget.refreshAll(requireContext());
                 renderReview();
             }
         }).show();
@@ -150,7 +153,7 @@ public class OverviewFragment extends Fragment implements Reloadable {
         pending = 4;
         Api api = new Api(server);
 
-        api.get("v1/transactions/amounts.json", Api.query("query", periodQuery(server), "use_transaction_timezone", "false"), Models.PeriodAmounts::parseAll, new Api.Callback<Map<String, Models.PeriodAmounts>>() {
+        api.get("v1/transactions/amounts.json", Api.query("query", Models.PeriodAmounts.query(server, PERIODS), "use_transaction_timezone", "false"), Models.PeriodAmounts::parseAll, new Api.Callback<Map<String, Models.PeriodAmounts>>() {
             @Override
             public void onSuccess(Map<String, Models.PeriodAmounts> result) {
                 amounts = result;
@@ -281,28 +284,7 @@ public class OverviewFragment extends Fragment implements Reloadable {
 
     /** Income and expense of a period in the default currency; currencies without a rate are left out and reported. */
     private long[] total(Models.PeriodAmounts period, String currency, Set<String> unconverted) {
-        long income = 0;
-        long expense = 0;
-
-        if (period == null) {
-            return new long[] { 0, 0 };
-        }
-
-        for (int i = 0; i < period.currencies.size(); i++) {
-            String from = period.currencies.get(i);
-            Long convertedIncome = rates.convert(period.incomes.get(i), from, currency);
-            Long convertedExpense = rates.convert(period.expenses.get(i), from, currency);
-
-            if (convertedIncome == null || convertedExpense == null) {
-                unconverted.add(from);
-                continue;
-            }
-
-            income += convertedIncome;
-            expense += convertedExpense;
-        }
-
-        return new long[] { income, expense };
+        return period == null ? new long[] { 0, 0 } : period.total(currency, rates, unconverted);
     }
 
     private void addPeriod(int labelRes, long[] values, String currency) {
@@ -333,49 +315,5 @@ public class OverviewFragment extends Fragment implements Reloadable {
             row.setOnClickListener(v -> startActivity(TransactionEditActivity.editIntent(requireContext(), transaction.id)));
             recentList.addView(row);
         }
-    }
-
-    /** Builds "today_start_end|thisWeek_start_end|…" in the phone's time zone. */
-    private static String periodQuery(Server server) {
-        int firstDayOfWeek = server.getUser().optInt("firstDayOfWeek", 0);
-        List<String> items = new ArrayList<>();
-        long now = System.currentTimeMillis();
-
-        for (String name : PERIODS) {
-            Calendar start = Calendar.getInstance();
-            start.setTimeInMillis(Formats.startOfDay(now));
-            Calendar end = (Calendar) start.clone();
-
-            switch (name) {
-                case "today":
-                    end.add(Calendar.DAY_OF_MONTH, 1);
-                    break;
-                case "thisWeek":
-                    int offset = (start.get(Calendar.DAY_OF_WEEK) - 1 - firstDayOfWeek + 7) % 7;
-                    start.add(Calendar.DAY_OF_MONTH, -offset);
-                    end = (Calendar) start.clone();
-                    end.add(Calendar.DAY_OF_MONTH, 7);
-                    break;
-                case "thisMonth":
-                    start.set(Calendar.DAY_OF_MONTH, 1);
-                    end = (Calendar) start.clone();
-                    end.add(Calendar.MONTH, 1);
-                    break;
-                case "lastMonth":
-                    start.set(Calendar.DAY_OF_MONTH, 1);
-                    end = (Calendar) start.clone();
-                    start.add(Calendar.MONTH, -1);
-                    break;
-                default:
-                    start.set(Calendar.DAY_OF_YEAR, 1);
-                    end = (Calendar) start.clone();
-                    end.add(Calendar.YEAR, 1);
-                    break;
-            }
-
-            items.add(name + "_" + start.getTimeInMillis() / 1000 + "_" + (end.getTimeInMillis() / 1000 - 1));
-        }
-
-        return TextUtils.join("|", items);
     }
 }

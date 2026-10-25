@@ -482,6 +482,75 @@ public final class Models {
 
             return map;
         }
+
+        /** Income and expense in one currency; currencies without a rate are left out and added to unconverted. */
+        public long[] total(String currency, ExchangeRates rates, java.util.Set<String> unconverted) {
+            long income = 0;
+            long expense = 0;
+
+            for (int i = 0; i < currencies.size(); i++) {
+                String from = currencies.get(i);
+                Long convertedIncome = rates.convert(incomes.get(i), from, currency);
+                Long convertedExpense = rates.convert(expenses.get(i), from, currency);
+
+                if (convertedIncome == null || convertedExpense == null) {
+                    unconverted.add(from);
+                    continue;
+                }
+
+                income += convertedIncome;
+                expense += convertedExpense;
+            }
+
+            return new long[] { income, expense };
+        }
+
+        /**
+         * Builds the query of v1/transactions/amounts.json, "today_start_end|thisWeek_start_end|…", in the phone's time zone.
+         * Periods are today, thisWeek, thisMonth, lastMonth and thisYear.
+         */
+        public static String query(Server server, String... periods) {
+            int firstDayOfWeek = server.getUser().optInt("firstDayOfWeek", 0);
+            List<String> items = new ArrayList<>();
+            long now = System.currentTimeMillis();
+
+            for (String name : periods) {
+                java.util.Calendar start = java.util.Calendar.getInstance();
+                start.setTimeInMillis(Formats.startOfDay(now));
+                java.util.Calendar end = (java.util.Calendar) start.clone();
+
+                switch (name) {
+                    case "today":
+                        end.add(java.util.Calendar.DAY_OF_MONTH, 1);
+                        break;
+                    case "thisWeek":
+                        int offset = (start.get(java.util.Calendar.DAY_OF_WEEK) - 1 - firstDayOfWeek + 7) % 7;
+                        start.add(java.util.Calendar.DAY_OF_MONTH, -offset);
+                        end = (java.util.Calendar) start.clone();
+                        end.add(java.util.Calendar.DAY_OF_MONTH, 7);
+                        break;
+                    case "thisMonth":
+                        start.set(java.util.Calendar.DAY_OF_MONTH, 1);
+                        end = (java.util.Calendar) start.clone();
+                        end.add(java.util.Calendar.MONTH, 1);
+                        break;
+                    case "lastMonth":
+                        start.set(java.util.Calendar.DAY_OF_MONTH, 1);
+                        end = (java.util.Calendar) start.clone();
+                        start.add(java.util.Calendar.MONTH, -1);
+                        break;
+                    default:
+                        start.set(java.util.Calendar.DAY_OF_YEAR, 1);
+                        end = (java.util.Calendar) start.clone();
+                        end.add(java.util.Calendar.YEAR, 1);
+                        break;
+                }
+
+                items.add(name + "_" + start.getTimeInMillis() / 1000 + "_" + (end.getTimeInMillis() / 1000 - 1));
+            }
+
+            return android.text.TextUtils.join("|", items);
+        }
     }
 
     /** Exchange rates against one base currency, for showing totals in the user's default currency. */

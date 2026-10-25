@@ -3,6 +3,8 @@ package com.ssiuuk.ezbookkeeping.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 
 import org.json.JSONArray;
@@ -22,6 +24,7 @@ public final class ServerStore {
     private static final String KEY_THEME = "theme";
 
     private static ServerStore instance;
+    private static Runnable changeListener;
 
     private final SharedPreferences preferences;
     private final List<Server> servers = new ArrayList<>();
@@ -38,6 +41,11 @@ public final class ServerStore {
         }
 
         return instance;
+    }
+
+    /** Called after the servers, the one in use or a sign-in change, for things outside the app's screens such as the widget. */
+    public static void setChangeListener(Runnable listener) {
+        changeListener = listener;
     }
 
     public synchronized List<Server> getServers() {
@@ -176,6 +184,11 @@ public final class ServerStore {
             .putString(KEY_SERVERS, array.toString())
             .putString(KEY_ACTIVE_SERVER_ID, activeServerId)
             .apply();
+
+        if (changeListener != null) {
+            // later, so the listener can read the store even while it is being created
+            new Handler(Looper.getMainLooper()).post(changeListener);
+        }
     }
 
     /** Turns what the user typed into a server base address, or null when it isn't one. */

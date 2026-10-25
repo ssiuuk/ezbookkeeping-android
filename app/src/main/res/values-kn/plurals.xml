@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="server_count">
+        <item quantity="one">%1$d ಸರ್ವರ್</item>
+        <item quantity="other">%1$d ಸರ್ವರ್‌ಗಳು</item>
+    </plurals>
+    <plurals name="to_review_count">
+        <item quantity="one">ಪರಿಶೀಲಿಸಲು %d ಖರೀದಿ</item>
+        <item quantity="other">ಪರಿಶೀಲಿಸಲು %d ಖರೀದಿಗಳು</item>
+    </plurals>
+    <plurals name="widget_review_count">
+        <item quantity="one">ಪರಿಶೀಲಿಸಲು %d</item>
+        <item quantity="other">ಪರಿಶೀಲಿಸಲು %d</item>
+    </plurals>
+</resources>

@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 
+import com.ssiuuk.ezbookkeeping.data.Models;
 import com.ssiuuk.ezbookkeeping.data.Server;
 import com.ssiuuk.ezbookkeeping.data.ServerStore;
 
@@ -11,15 +12,27 @@ import com.ssiuuk.ezbookkeeping.data.ServerStore;
 public class LaunchActivity extends Activity {
     public static final String ACTION_CHANGE_SERVER = "com.ssiuuk.ezbookkeeping.CHANGE_SERVER";
     public static final String ACTION_ADD_TRANSACTION = "com.ssiuuk.ezbookkeeping.ADD_TRANSACTION";
+    public static final String ACTION_EDIT_TRANSACTION = "com.ssiuuk.ezbookkeeping.EDIT_TRANSACTION";
+    /** With ACTION_ADD_TRANSACTION: the type of the new transaction, Models.TRANSACTION_EXPENSE when missing. */
+    public static final String EXTRA_TYPE = "type";
+    /** With ACTION_EDIT_TRANSACTION: the transaction to open. */
+    public static final String EXTRA_TRANSACTION_ID = "transaction_id";
+    /** With either action: the book to add to or open the transaction in, "" for the user's own book; missing means the app's book. */
+    public static final String EXTRA_BOOK_ID = "book_id";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Intent next = nextScreen(this, ACTION_CHANGE_SERVER.equals(getIntent().getAction()));
+        Intent intent = getIntent();
+        Intent next = nextScreen(this, ACTION_CHANGE_SERVER.equals(intent.getAction()));
+        boolean signedIn = next.getComponent() != null && MainActivity.class.getName().equals(next.getComponent().getClassName());
+        String transactionId = intent.getStringExtra(EXTRA_TRANSACTION_ID);
 
-        if (ACTION_ADD_TRANSACTION.equals(getIntent().getAction()) && next.getComponent() != null
-            && MainActivity.class.getName().equals(next.getComponent().getClassName())) {
-            startActivities(new Intent[] { next, TransactionEditActivity.addIntent(this, null) });
+        if (signedIn && ACTION_ADD_TRANSACTION.equals(intent.getAction())) {
+            Intent add = TransactionEditActivity.addIntent(this, intent.getIntExtra(EXTRA_TYPE, Models.TRANSACTION_EXPENSE));
+            startActivities(new Intent[] { next, TransactionEditActivity.inBook(add, intent.getStringExtra(EXTRA_BOOK_ID)) });
+        } else if (signedIn && ACTION_EDIT_TRANSACTION.equals(intent.getAction()) && transactionId != null) {
+            startActivities(new Intent[] { next, TransactionEditActivity.inBook(TransactionEditActivity.editIntent(this, transactionId), intent.getStringExtra(EXTRA_BOOK_ID)) });
         } else {
             startActivity(next);
         }

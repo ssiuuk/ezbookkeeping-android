@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="server_count">
+        <item quantity="one">%1$d διακομιστής</item>
+        <item quantity="other">%1$d διακομιστές</item>
+    </plurals>
+    <plurals name="to_review_count">
+        <item quantity="one">%d αγορά για έλεγχο</item>
+        <item quantity="other">%d αγορές για έλεγχο</item>
+    </plurals>
+    <plurals name="widget_review_count">
+        <item quantity="one">%d για έλεγχο</item>
+        <item quantity="other">%d για έλεγχο</item>
+    </plurals>
+</resources>

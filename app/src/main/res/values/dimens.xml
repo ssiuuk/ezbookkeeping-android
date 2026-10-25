@@ -3,4 +3,5 @@
     <dimen name="active_stroke">2dp</dimen>
     <dimen name="dialog_padding">24dp</dimen>
     <dimen name="avatar_size">40dp</dimen>
+    <dimen name="widget_radius">20dp</dimen>
 </resources>

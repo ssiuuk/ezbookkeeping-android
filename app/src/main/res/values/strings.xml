@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ezBookkeeping</string>
+    <string name="app_name" translatable="false">ezBookkeeping</string>
 
     <!-- servers -->
     <string name="servers">Servers</string>
@@ -104,8 +104,8 @@
     <string name="read_only_transaction">This transaction can\'t be edited here.</string>
     <string name="search">Search</string>
     <string name="search_hint">Search descriptions</string>
-    <string name="transfer_to">%1$s → %2$s</string>
-    <string name="hidden_amount">•••</string>
+    <string name="transfer_to" translatable="false">%1$s → %2$s</string>
+    <string name="hidden_amount" translatable="false">•••</string>
 
     <!-- books -->
     <string name="books">Books</string>
@@ -199,10 +199,33 @@
     <string name="open_settings">Open settings</string>
     <string name="to_review_hint">From Google Wallet. Tap to check and save, or touch and hold to dismiss.</string>
     <string name="unknown_merchant">Purchase</string>
-    <string name="google_wallet">Google Wallet</string>
+    <string name="google_wallet" translatable="false">Google Wallet</string>
     <string name="purchase_dismissed">Purchase dismissed</string>
     <string name="review_purchase">Review purchase</string>
     <string name="dismiss_purchase">Dismiss</string>
     <string name="paid_in_currency">%1$s · paid %2$s</string>
     <string name="undo">Undo</string>
+
+    <!-- language -->
+    <string name="language">Language</string>
+    <string name="language_system">Same as the phone</string>
+
+    <!-- server errors -->
+    <string name="error_unexpected_response">Unexpected response from the server</string>
+    <string name="error_server_status">The server answered with error %1$d</string>
+    <string name="error_unreachable">Can\'t reach the server</string>
+    <string name="error_not_supported">This server doesn\'t support this feature</string>
+
+    <!-- home screen widget -->
+    <string name="widget_name">Spending</string>
+    <string name="widget_description">Spending this month, the latest transactions and quick ways to add one</string>
+    <string name="widget_settings">Widget settings</string>
+    <string name="widget_period">Period</string>
+    <string name="widget_book_app">Same as the app</string>
+    <string name="widget_hide_amounts">Hide amounts</string>
+    <string name="widget_amounts_hidden">Amounts show as •••</string>
+    <string name="widget_amounts_shown">Amounts are shown</string>
+    <string name="widget_sign_in">Sign in to see your spending</string>
+    <string name="widget_update_failed">Couldn\'t update</string>
+    <string name="refresh">Refresh</string>
 </resources>
