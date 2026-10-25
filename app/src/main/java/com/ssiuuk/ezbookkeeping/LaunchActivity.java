@@ -17,6 +17,8 @@ public class LaunchActivity extends Activity {
     public static final String EXTRA_TYPE = "type";
     /** With ACTION_EDIT_TRANSACTION: the transaction to open. */
     public static final String EXTRA_TRANSACTION_ID = "transaction_id";
+    /** With either action: the book to add to or open the transaction in, "" for the user's own book; missing means the app's book. */
+    public static final String EXTRA_BOOK_ID = "book_id";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,9 +29,10 @@ public class LaunchActivity extends Activity {
         String transactionId = intent.getStringExtra(EXTRA_TRANSACTION_ID);
 
         if (signedIn && ACTION_ADD_TRANSACTION.equals(intent.getAction())) {
-            startActivities(new Intent[] { next, TransactionEditActivity.addIntent(this, intent.getIntExtra(EXTRA_TYPE, Models.TRANSACTION_EXPENSE)) });
+            Intent add = TransactionEditActivity.addIntent(this, intent.getIntExtra(EXTRA_TYPE, Models.TRANSACTION_EXPENSE));
+            startActivities(new Intent[] { next, TransactionEditActivity.inBook(add, intent.getStringExtra(EXTRA_BOOK_ID)) });
         } else if (signedIn && ACTION_EDIT_TRANSACTION.equals(intent.getAction()) && transactionId != null) {
-            startActivities(new Intent[] { next, TransactionEditActivity.editIntent(this, transactionId) });
+            startActivities(new Intent[] { next, TransactionEditActivity.inBook(TransactionEditActivity.editIntent(this, transactionId), intent.getStringExtra(EXTRA_BOOK_ID)) });
         } else {
             startActivity(next);
         }
