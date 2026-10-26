@@ -94,7 +94,9 @@
     <string name="key_divide">Împărțit la</string>
     <string name="key_open">Paranteză deschisă</string>
     <string name="key_close">Paranteză închisă</string>
-    <string name="key_equals">Calculează</string>
+    <string name="key_clear">Șterge</string>
+    <string name="key_point">Separator zecimal</string>
+    <string name="key_backspace">Șterge caracterul</string>
     <string name="category_required">Alege o categorie</string>
     <string name="account_required">Alege un cont</string>
     <string name="destination_account_required">Alege contul în care transferi</string>

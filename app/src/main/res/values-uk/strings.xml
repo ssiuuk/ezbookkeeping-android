@@ -94,7 +94,9 @@
     <string name="key_divide">Поділити</string>
     <string name="key_open">Відкривна дужка</string>
     <string name="key_close">Закривна дужка</string>
-    <string name="key_equals">Обчислити</string>
+    <string name="key_clear">Очистити</string>
+    <string name="key_point">Десятковий роздільник</string>
+    <string name="key_backspace">Стерти символ</string>
     <string name="category_required">Виберіть категорію</string>
     <string name="account_required">Виберіть рахунок</string>
     <string name="destination_account_required">Виберіть рахунок для переказу</string>

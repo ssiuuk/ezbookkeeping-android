@@ -94,7 +94,9 @@
     <string name="key_divide">除以</string>
     <string name="key_open">左括号</string>
     <string name="key_close">右括号</string>
-    <string name="key_equals">计算</string>
+    <string name="key_clear">清除</string>
+    <string name="key_point">小数点</string>
+    <string name="key_backspace">退格</string>
     <string name="category_required">请选择分类</string>
     <string name="account_required">请选择账户</string>
     <string name="destination_account_required">请选择转入账户</string>

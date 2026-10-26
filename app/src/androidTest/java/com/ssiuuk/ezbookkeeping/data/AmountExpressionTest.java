@@ -10,6 +10,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.Locale;
+
 /** Sums typed in the amount fields. */
 @RunWith(AndroidJUnit4.class)
 public class AmountExpressionTest {
@@ -52,5 +54,22 @@ public class AmountExpressionTest {
         assertNull(Formats.parseAmount("12)"));
         assertNull(Formats.parseAmount("10÷0"));
         assertNull(Formats.parseAmount("1.2.3+4"));
+    }
+
+    @Test
+    public void decimalKeyTypesWhatAmountsAreReadWith() {
+        assertEquals(".", AmountExpression.decimalKey(Locale.UK));
+        assertEquals(",", AmountExpression.decimalKey(Locale.GERMANY));
+        assertEquals(",", AmountExpression.decimalKey(new Locale("fr", "FR")));
+        // Arabic writes decimals with ٫, which amounts aren't read with
+        assertEquals(".", AmountExpression.decimalKey(new Locale("ar", "EG")));
+        assertEquals(".", AmountExpression.decimalKey(new Locale("fa", "IR")));
+
+        for (Locale locale : new Locale[] {Locale.UK, Locale.GERMANY, new Locale("ar", "EG"), new Locale("fa", "IR")}) {
+            assertEquals(Long.valueOf(1250), Formats.parseAmount("12" + AmountExpression.decimalKey(locale) + "5"));
+        }
+
+        // and a pasted amount written with them
+        assertEquals(Long.valueOf(123456), Formats.parseAmount("1\u066c234\u066b56"));
     }
 }

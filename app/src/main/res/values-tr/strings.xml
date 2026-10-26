@@ -94,7 +94,9 @@
     <string name="key_divide">Bölü</string>
     <string name="key_open">Parantez aç</string>
     <string name="key_close">Parantez kapat</string>
-    <string name="key_equals">Hesapla</string>
+    <string name="key_clear">Temizle</string>
+    <string name="key_point">Ondalık ayırıcı</string>
+    <string name="key_backspace">Geri sil</string>
     <string name="category_required">Bir kategori seçin</string>
     <string name="account_required">Bir hesap seçin</string>
     <string name="destination_account_required">Transfer yapılacak hesabı seçin</string>

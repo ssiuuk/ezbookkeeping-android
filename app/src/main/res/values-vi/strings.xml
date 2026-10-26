@@ -94,7 +94,9 @@
     <string name="key_divide">Chia</string>
     <string name="key_open">Mở ngoặc</string>
     <string name="key_close">Đóng ngoặc</string>
-    <string name="key_equals">Tính</string>
+    <string name="key_clear">Xóa</string>
+    <string name="key_point">Dấu thập phân</string>
+    <string name="key_backspace">Xóa lùi</string>
     <string name="category_required">Chọn một danh mục</string>
     <string name="account_required">Chọn một tài khoản</string>
     <string name="destination_account_required">Chọn tài khoản nhận chuyển khoản</string>

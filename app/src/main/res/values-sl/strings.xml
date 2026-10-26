@@ -94,7 +94,9 @@
     <string name="key_divide">Deljeno z</string>
     <string name="key_open">Oklepaj</string>
     <string name="key_close">Zaklepaj</string>
-    <string name="key_equals">Izračunaj</string>
+    <string name="key_clear">Počisti</string>
+    <string name="key_point">Decimalno ločilo</string>
+    <string name="key_backspace">Vračalka</string>
     <string name="category_required">Izberite kategorijo</string>
     <string name="account_required">Izberite račun</string>
     <string name="destination_account_required">Izberite račun, na katerega nakazujete</string>

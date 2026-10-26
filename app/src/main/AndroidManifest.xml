@@ -48,7 +48,7 @@
         <activity
             android:name=".TransactionEditActivity"
             android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
+            android:windowSoftInputMode="stateHidden|adjustResize" />
 
         <activity
             android:name=".AccountTransactionsActivity"

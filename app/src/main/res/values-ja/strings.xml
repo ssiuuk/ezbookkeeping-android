@@ -94,7 +94,9 @@
     <string name="key_divide">わる</string>
     <string name="key_open">左かっこ</string>
     <string name="key_close">右かっこ</string>
-    <string name="key_equals">計算する</string>
+    <string name="key_clear">消去</string>
+    <string name="key_point">小数点</string>
+    <string name="key_backspace">1文字削除</string>
     <string name="category_required">カテゴリを選択してください</string>
     <string name="account_required">口座を選択してください</string>
     <string name="destination_account_required">振替先の口座を選択してください</string>

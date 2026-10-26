@@ -104,7 +104,9 @@
     <string name="key_divide">Divided by</string>
     <string name="key_open">Opening bracket</string>
     <string name="key_close">Closing bracket</string>
-    <string name="key_equals">Work out the sum</string>
+    <string name="key_clear">Clear</string>
+    <string name="key_point">Decimal point</string>
+    <string name="key_backspace">Backspace</string>
     <string name="category_required">Choose a category</string>
     <string name="account_required">Choose an account</string>
     <string name="destination_account_required">Choose the account to transfer to</string>

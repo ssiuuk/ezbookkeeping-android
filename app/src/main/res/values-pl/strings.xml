@@ -94,7 +94,9 @@
     <string name="key_divide">Podzielone przez</string>
     <string name="key_open">Nawias otwierający</string>
     <string name="key_close">Nawias zamykający</string>
-    <string name="key_equals">Oblicz</string>
+    <string name="key_clear">Wyczyść</string>
+    <string name="key_point">Separator dziesiętny</string>
+    <string name="key_backspace">Cofnij znak</string>
     <string name="category_required">Wybierz kategorię</string>
     <string name="account_required">Wybierz konto</string>
     <string name="destination_account_required">Wybierz konto, na które przelać</string>

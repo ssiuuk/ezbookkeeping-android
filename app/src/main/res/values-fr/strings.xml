@@ -94,7 +94,9 @@
     <string name="key_divide">Divisé par</string>
     <string name="key_open">Parenthèse ouvrante</string>
     <string name="key_close">Parenthèse fermante</string>
-    <string name="key_equals">Calculer</string>
+    <string name="key_clear">Effacer</string>
+    <string name="key_point">Séparateur décimal</string>
+    <string name="key_backspace">Retour arrière</string>
     <string name="category_required">Choisissez une catégorie</string>
     <string name="account_required">Choisissez un compte</string>
     <string name="destination_account_required">Choisissez le compte de destination du virement</string>

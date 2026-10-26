@@ -94,7 +94,9 @@
     <string name="key_divide">Dividido por</string>
     <string name="key_open">Abrir parêntese</string>
     <string name="key_close">Fechar parêntese</string>
-    <string name="key_equals">Calcular</string>
+    <string name="key_clear">Limpar</string>
+    <string name="key_point">Separador decimal</string>
+    <string name="key_backspace">Apagar</string>
     <string name="category_required">Escolha uma categoria</string>
     <string name="account_required">Escolha uma conta</string>
     <string name="destination_account_required">Escolha a conta de destino da transferência</string>

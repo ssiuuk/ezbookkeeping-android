@@ -3,6 +3,8 @@ package com.ssiuuk.ezbookkeeping.data;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
 
 /**
  * Works out an amount typed as a sum, such as "12.50+3.20×2" or "(18-2.5)/3": + − × ÷ (or - * /) and brackets,
@@ -27,7 +29,9 @@ public final class AmountExpression {
 
         // spaces, including the no-break and narrow no-break spaces that formatted amounts group digits with
         String cleaned = input.replaceAll("[\\s\\u00a0\\u2007\\u2009\\u202f]", "")
-            .replace('×', '*').replace('÷', '/').replace('−', '-').replace('–', '-');
+            .replace('×', '*').replace('÷', '/').replace('−', '-').replace('–', '-')
+            // Arabic decimal and thousands separators, in pasted amounts
+            .replace('\u066b', '.').replace('\u066c', ',');
 
         if (cleaned.isEmpty()) {
             return null;
@@ -153,6 +157,14 @@ public final class AmountExpression {
         int lastDot = token.lastIndexOf('.');
         String cleaned = lastComma > lastDot ? token.replace(".", "").replace(',', '.') : token.replace(",", "");
         return new BigDecimal(cleaned);
+    }
+
+    /**
+     * What the number pad's decimal key types: a comma where the language writes decimals with one, otherwise a dot, since
+     * amounts are read with either and no other separator (such as Arabic's ٫).
+     */
+    public static String decimalKey(Locale locale) {
+        return DecimalFormatSymbols.getInstance(locale).getDecimalSeparator() == ',' ? "," : ".";
     }
 
     /** Rounds a result to cents, the way amounts are kept. */
