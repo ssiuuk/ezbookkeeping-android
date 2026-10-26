@@ -684,6 +684,8 @@ public class TransactionEditActivity extends BaseActivity {
         // a hardware keyboard can still type sums; the phone's own keyboard stays closed
         input.setKeyListener(DigitsKeyListener.getInstance("0123456789.,+-*/×÷−()"));
         input.setShowSoftInputOnFocus(false);
+        // not a text field to the phone's keyboard either, which could otherwise open over the pad as the screen opens
+        input.setRawInputType(InputType.TYPE_NULL);
 
         input.addTextChangedListener(new TextWatcher() {
             @Override
