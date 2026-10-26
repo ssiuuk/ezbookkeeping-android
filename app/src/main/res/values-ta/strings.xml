@@ -94,7 +94,9 @@
     <string name="key_divide">வகுத்தல்</string>
     <string name="key_open">தொடக்க அடைப்புக்குறி</string>
     <string name="key_close">முடிவு அடைப்புக்குறி</string>
-    <string name="key_equals">கணக்கிடு</string>
+    <string name="key_clear">அழி</string>
+    <string name="key_point">தசமப் புள்ளி</string>
+    <string name="key_backspace">பின்னழி</string>
     <string name="category_required">ஒரு வகையைத் தேர்ந்தெடுக்கவும்</string>
     <string name="account_required">ஒரு கணக்கைத் தேர்ந்தெடுக்கவும்</string>
     <string name="destination_account_required">பணம் மாற்ற வேண்டிய கணக்கைத் தேர்ந்தெடுக்கவும்</string>

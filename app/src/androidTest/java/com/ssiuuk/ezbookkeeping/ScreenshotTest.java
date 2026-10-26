@@ -96,18 +96,19 @@ public class ScreenshotTest {
             tap(By.res(packageName, "nav_overview"));
             tap(By.res(packageName, "fab"));
             find(By.res(packageName, "amount"));
-            hideKeyboard();
             // the test server has a shared "Family" book, so the book field is offered
             find(By.res(packageName, "book"));
+
+            // the amount is typed on the app's number pad, sums included: the result shows under the field, and OK puts it in place
+            for (String key : new String[] {"key_open", "key_1", "key_0", "key_plus", "key_2", "key_point", "key_5", "key_close"}) {
+                tap(By.res(packageName, key));
+            }
+
+            find(By.res(packageName, "amount").text("(10+2.5)"));
+            find(By.text("= 12.50"));
             settle();
             shot("07-add-transaction");
-
-            // a sum: the keys add to it, its result shows under the field, and = puts it in place
-            type(By.res(packageName, "amount"), "(10+2,5");
-            tap(By.res(packageName, "key_close"));
-            find(By.res(packageName, "amount").text("(10+2,5)"));
-            find(By.text("= 12.50"));
-            tap(By.res(packageName, "key_equals"));
+            tap(By.res(packageName, "key_ok"));
             find(By.res(packageName, "amount").text("12.50"));
             hideKeyboard();
             tap(By.res(packageName, "category"));
@@ -416,6 +417,9 @@ public class ScreenshotTest {
                 device.waitForIdle();
             }
 
+            // likewise the number pad
+            closeNumberPad();
+
             try {
                 scroll.scroll(Direction.DOWN, 0.6f);
             } catch (StaleObjectException e) {
@@ -523,6 +527,23 @@ public class ScreenshotTest {
 
         if (shown) {
             device.pressBack();
+            device.waitForIdle();
+        }
+
+        closeNumberPad();
+    }
+
+    /** Closes the amount fields' number pad if it is open, as OK would. */
+    private void closeNumberPad() {
+        UiObject2 ok = device.findObject(By.res(packageName, "key_ok"));
+
+        if (ok != null) {
+            try {
+                ok.click();
+            } catch (StaleObjectException e) {
+                // already gone
+            }
+
             device.waitForIdle();
         }
     }

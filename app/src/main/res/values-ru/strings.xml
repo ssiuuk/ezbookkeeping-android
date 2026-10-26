@@ -94,7 +94,9 @@
     <string name="key_divide">Разделить</string>
     <string name="key_open">Открывающая скобка</string>
     <string name="key_close">Закрывающая скобка</string>
-    <string name="key_equals">Вычислить</string>
+    <string name="key_clear">Очистить</string>
+    <string name="key_point">Десятичный разделитель</string>
+    <string name="key_backspace">Стереть символ</string>
     <string name="category_required">Выберите категорию</string>
     <string name="account_required">Выберите счёт</string>
     <string name="destination_account_required">Выберите счёт для перевода</string>

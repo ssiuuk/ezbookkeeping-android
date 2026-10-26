@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.media.ExifInterface;
 import android.net.Uri;
@@ -18,6 +19,7 @@ import android.text.method.DigitsKeyListener;
 import android.text.format.DateFormat;
 import android.view.Gravity;
 import android.view.Menu;
+import android.view.MotionEvent;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,6 +30,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -67,6 +70,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -167,7 +171,7 @@ public class TransactionEditActivity extends BaseActivity {
     private TextInputEditText destinationAccountInput;
     private TextInputLayout destinationAmountLayout;
     private TextInputEditText destinationAmountInput;
-    private LinearLayout amountKeys;
+    private View amountKeypad;
     /** What the amount field says under it when it isn't showing a sum's result, such as the card a payment was made with. */
     private CharSequence amountHelper;
     private TextInputEditText dateInput;
@@ -296,7 +300,7 @@ public class TransactionEditActivity extends BaseActivity {
         destinationAccountInput = findViewById(R.id.destination_account);
         destinationAmountLayout = findViewById(R.id.destination_amount_layout);
         destinationAmountInput = findViewById(R.id.destination_amount);
-        amountKeys = findViewById(R.id.amount_keys);
+        amountKeypad = findViewById(R.id.amount_keypad);
         dateInput = findViewById(R.id.date);
         timeInput = findViewById(R.id.time);
         projectLayout = findViewById(R.id.project_layout);
@@ -361,16 +365,7 @@ public class TransactionEditActivity extends BaseActivity {
 
         setUpSums(amountLayout, amountInput);
         setUpSums(destinationAmountLayout, destinationAmountInput);
-        findViewById(R.id.key_plus).setOnClickListener(view -> typeInAmount("+"));
-        findViewById(R.id.key_minus).setOnClickListener(view -> typeInAmount("−"));
-        findViewById(R.id.key_times).setOnClickListener(view -> typeInAmount("×"));
-        findViewById(R.id.key_divide).setOnClickListener(view -> typeInAmount("÷"));
-        findViewById(R.id.key_open).setOnClickListener(view -> typeInAmount("("));
-        findViewById(R.id.key_close).setOnClickListener(view -> typeInAmount(")"));
-        findViewById(R.id.key_equals).setOnClickListener(view -> {
-            TextInputEditText input = destinationAmountInput.hasFocus() ? destinationAmountInput : amountInput;
-            workOutSum(input);
-        });
+        setUpKeypad();
 
         if (pending != null) {
             fillFromPending();
@@ -381,14 +376,8 @@ public class TransactionEditActivity extends BaseActivity {
         loadBookData();
 
         if (transactionId == null && pending == null) {
+            // opens the number pad
             amountInput.requestFocus();
-            amountInput.postDelayed(() -> {
-                InputMethodManager keyboard = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-
-                if (keyboard != null) {
-                    keyboard.showSoftInput(amountInput, InputMethodManager.SHOW_IMPLICIT);
-                }
-            }, 300);
         }
 
         renderAll();
@@ -688,13 +677,13 @@ public class TransactionEditActivity extends BaseActivity {
     }
 
     /**
-     * Lets an amount field take a sum such as 12.50+3.20×2: its result shows under the field as it is typed, the + − × ÷ ( ) keys
-     * show while it is being typed in, and Done or leaving the field puts the result in its place.
+     * Lets an amount field take a sum such as 12.50+3.20×2: it is typed on the app's own number pad, which has + − × ÷ ( ) next
+     * to the digits, the result shows under the field as it is typed, and OK or leaving the field puts the result in its place.
      */
     private void setUpSums(TextInputLayout layout, TextInputEditText input) {
+        // a hardware keyboard can still type sums; the phone's own keyboard stays closed
         input.setKeyListener(DigitsKeyListener.getInstance("0123456789.,+-*/×÷−()"));
-        // keeps the number keyboard, with its minus key
-        input.setRawInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL | InputType.TYPE_NUMBER_FLAG_SIGNED);
+        input.setShowSoftInputOnFocus(false);
 
         input.addTextChangedListener(new TextWatcher() {
             @Override
@@ -714,28 +703,112 @@ public class TransactionEditActivity extends BaseActivity {
 
         input.setOnFocusChangeListener((view, hasFocus) -> {
             if (hasFocus) {
-                // the keys go under whichever amount field is being typed in
-                ViewGroup form = (ViewGroup) amountKeys.getParent();
-                form.removeView(amountKeys);
-                form.addView(amountKeys, form.indexOfChild(layout) + 1);
-                amountKeys.setVisibility(View.VISIBLE);
+                showKeypad(layout);
             } else {
                 workOutSum(input);
 
                 if (!amountInput.hasFocus() && !destinationAmountInput.hasFocus()) {
-                    amountKeys.setVisibility(View.GONE);
+                    amountKeypad.setVisibility(View.GONE);
                 }
             }
         });
+
+        // tapping the field again after OK brings the pad back
+        input.setOnClickListener(view -> showKeypad(layout));
 
         input.setOnEditorActionListener((view, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 workOutSum(input);
             }
 
-            // the keyboard still closes
             return false;
         });
+    }
+
+    private void setUpKeypad() {
+        String[] digits = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
+        int[] digitKeys = {R.id.key_0, R.id.key_1, R.id.key_2, R.id.key_3, R.id.key_4, R.id.key_5, R.id.key_6, R.id.key_7, R.id.key_8, R.id.key_9};
+
+        for (int i = 0; i < digitKeys.length; i++) {
+            String digit = digits[i];
+            findViewById(digitKeys[i]).setOnClickListener(view -> typeInAmount(digit));
+        }
+
+        // the separator people expect, which the amount reading takes either way
+        String point = String.valueOf(DecimalFormatSymbols.getInstance().getDecimalSeparator());
+        MaterialButton pointKey = findViewById(R.id.key_point);
+        pointKey.setText(point);
+        pointKey.setOnClickListener(view -> typeInAmount(point));
+
+        findViewById(R.id.key_plus).setOnClickListener(view -> typeInAmount("+"));
+        findViewById(R.id.key_minus).setOnClickListener(view -> typeInAmount("−"));
+        findViewById(R.id.key_times).setOnClickListener(view -> typeInAmount("×"));
+        findViewById(R.id.key_divide).setOnClickListener(view -> typeInAmount("÷"));
+        findViewById(R.id.key_open).setOnClickListener(view -> typeInAmount("("));
+        findViewById(R.id.key_close).setOnClickListener(view -> typeInAmount(")"));
+        findViewById(R.id.key_clear).setOnClickListener(view -> keypadInput().setText(""));
+        findViewById(R.id.key_backspace).setOnClickListener(view -> deleteInAmount());
+        findViewById(R.id.key_backspace).setOnLongClickListener(view -> {
+            keypadInput().setText("");
+            return true;
+        });
+        findViewById(R.id.key_ok).setOnClickListener(view -> closeKeypad());
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (amountKeypad.getVisibility() == View.VISIBLE) {
+                    closeKeypad();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                    setEnabled(true);
+                }
+            }
+        });
+    }
+
+    private void showKeypad(TextInputLayout layout) {
+        InputMethodManager keyboard = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+
+        if (keyboard != null) {
+            keyboard.hideSoftInputFromWindow(layout.getWindowToken(), 0);
+        }
+
+        amountKeypad.setVisibility(View.VISIBLE);
+        // keeps the field in sight above the pad
+        layout.post(() -> layout.requestRectangleOnScreen(new Rect(0, 0, layout.getWidth(), layout.getHeight())));
+    }
+
+    /** Works out the sum, closes the pad and moves on from the field. */
+    private void closeKeypad() {
+        TextInputEditText input = keypadInput();
+        workOutSum(input);
+        amountKeypad.setVisibility(View.GONE);
+        input.clearFocus();
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        // touching anything but the pad or the amount field closes the pad, as touching outside a keyboard would
+        if (event.getAction() == MotionEvent.ACTION_DOWN && amountKeypad.getVisibility() == View.VISIBLE
+            && !isInside(amountKeypad, event) && !isInside(keypadInput(), event)) {
+            closeKeypad();
+        }
+
+        return super.dispatchTouchEvent(event);
+    }
+
+    private static boolean isInside(View view, MotionEvent event) {
+        int[] location = new int[2];
+        view.getLocationOnScreen(location);
+        float x = event.getRawX();
+        float y = event.getRawY();
+        return x >= location[0] && x < location[0] + view.getWidth() && y >= location[1] && y < location[1] + view.getHeight();
+    }
+
+    private TextInputEditText keypadInput() {
+        return destinationAmountInput.hasFocus() ? destinationAmountInput : amountInput;
     }
 
     private void showSumResult(TextInputLayout layout, String text) {
@@ -761,7 +834,7 @@ public class TransactionEditActivity extends BaseActivity {
     }
 
     private void typeInAmount(String key) {
-        TextInputEditText input = destinationAmountInput.hasFocus() ? destinationAmountInput : amountInput;
+        TextInputEditText input = keypadInput();
         Editable text = input.getText();
 
         if (text == null) {
@@ -771,6 +844,24 @@ public class TransactionEditActivity extends BaseActivity {
         int start = Math.max(0, Math.min(input.getSelectionStart(), input.getSelectionEnd()));
         int end = Math.max(0, Math.max(input.getSelectionStart(), input.getSelectionEnd()));
         text.replace(start, end, key);
+    }
+
+    private void deleteInAmount() {
+        TextInputEditText input = keypadInput();
+        Editable text = input.getText();
+
+        if (text == null) {
+            return;
+        }
+
+        int start = Math.max(0, Math.min(input.getSelectionStart(), input.getSelectionEnd()));
+        int end = Math.max(0, Math.max(input.getSelectionStart(), input.getSelectionEnd()));
+
+        if (start != end) {
+            text.delete(start, end);
+        } else if (start > 0) {
+            text.delete(start - 1, start);
+        }
     }
 
     /** Says the sum can't be worked out (such as 12+ or ÷0) rather than asking for an amount the field already has. */

@@ -94,7 +94,9 @@
     <string name="key_divide">Gedeeld door</string>
     <string name="key_open">Haakje openen</string>
     <string name="key_close">Haakje sluiten</string>
-    <string name="key_equals">Uitrekenen</string>
+    <string name="key_clear">Wissen</string>
+    <string name="key_point">Decimaalteken</string>
+    <string name="key_backspace">Backspace</string>
     <string name="category_required">Kies een categorie</string>
     <string name="account_required">Kies een rekening</string>
     <string name="destination_account_required">Kies de rekening om naar over te maken</string>

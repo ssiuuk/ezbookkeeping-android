@@ -94,7 +94,9 @@
     <string name="key_divide">나누기</string>
     <string name="key_open">여는 괄호</string>
     <string name="key_close">닫는 괄호</string>
-    <string name="key_equals">계산하기</string>
+    <string name="key_clear">지우기</string>
+    <string name="key_point">소수점</string>
+    <string name="key_backspace">백스페이스</string>
     <string name="category_required">카테고리를 선택하세요</string>
     <string name="account_required">계좌를 선택하세요</string>
     <string name="destination_account_required">이체할 계좌를 선택하세요</string>

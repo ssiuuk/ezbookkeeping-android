@@ -94,7 +94,9 @@
     <string name="key_divide">ಭಾಗಿಸು</string>
     <string name="key_open">ಆರಂಭದ ಆವರಣ</string>
     <string name="key_close">ಮುಕ್ತಾಯದ ಆವರಣ</string>
-    <string name="key_equals">ಲೆಕ್ಕ ಹಾಕಿ</string>
+    <string name="key_clear">ಕ್ಲಿಯರ್</string>
+    <string name="key_point">ದಶಮಾಂಶ ಬಿಂದು</string>
+    <string name="key_backspace">ಹಿಂದಿನ ಅಕ್ಷರ ಅಳಿಸಿ</string>
     <string name="category_required">ಒಂದು ವರ್ಗವನ್ನು ಆಯ್ಕೆಮಾಡಿ</string>
     <string name="account_required">ಒಂದು ಖಾತೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ</string>
     <string name="destination_account_required">ವರ್ಗಾಯಿಸಬೇಕಾದ ಖಾತೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ</string>

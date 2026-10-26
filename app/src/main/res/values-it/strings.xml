@@ -94,7 +94,9 @@
     <string name="key_divide">Diviso</string>
     <string name="key_open">Parentesi aperta</string>
     <string name="key_close">Parentesi chiusa</string>
-    <string name="key_equals">Calcola</string>
+    <string name="key_clear">Pulisci</string>
+    <string name="key_point">Separatore decimale</string>
+    <string name="key_backspace">Backspace</string>
     <string name="category_required">Scegli una categoria</string>
     <string name="account_required">Scegli un conto</string>
     <string name="destination_account_required">Scegli il conto su cui trasferire</string>
