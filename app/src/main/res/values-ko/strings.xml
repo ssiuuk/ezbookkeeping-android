@@ -92,6 +92,8 @@
     <string name="key_minus">빼기</string>
     <string name="key_times">곱하기</string>
     <string name="key_divide">나누기</string>
+    <string name="key_open">여는 괄호</string>
+    <string name="key_close">닫는 괄호</string>
     <string name="key_equals">계산하기</string>
     <string name="category_required">카테고리를 선택하세요</string>
     <string name="account_required">계좌를 선택하세요</string>

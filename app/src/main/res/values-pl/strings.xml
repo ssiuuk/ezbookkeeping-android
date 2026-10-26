@@ -92,6 +92,8 @@
     <string name="key_minus">Minus</string>
     <string name="key_times">Razy</string>
     <string name="key_divide">Podzielone przez</string>
+    <string name="key_open">Nawias otwierający</string>
+    <string name="key_close">Nawias zamykający</string>
     <string name="key_equals">Oblicz</string>
     <string name="category_required">Wybierz kategorię</string>
     <string name="account_required">Wybierz konto</string>

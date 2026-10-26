@@ -25,7 +25,8 @@ public final class AmountExpression {
             return null;
         }
 
-        String cleaned = input.replace(" ", "").replace(" ", "").replace(" ", "")
+        // spaces, including the no-break and narrow no-break spaces that formatted amounts group digits with
+        String cleaned = input.replaceAll("[\\s\\u00a0\\u2007\\u2009\\u202f]", "")
             .replace('×', '*').replace('÷', '/').replace('−', '-').replace('–', '-');
 
         if (cleaned.isEmpty()) {

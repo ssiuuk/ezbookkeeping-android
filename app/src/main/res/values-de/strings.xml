@@ -92,6 +92,8 @@
     <string name="key_minus">Minus</string>
     <string name="key_times">Mal</string>
     <string name="key_divide">Geteilt durch</string>
+    <string name="key_open">Klammer auf</string>
+    <string name="key_close">Klammer zu</string>
     <string name="key_equals">Ausrechnen</string>
     <string name="category_required">Wähle eine Kategorie</string>
     <string name="account_required">Wähle ein Konto</string>

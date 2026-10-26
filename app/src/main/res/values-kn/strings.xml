@@ -92,6 +92,8 @@
     <string name="key_minus">ಕಳೆ</string>
     <string name="key_times">ಗುಣಿಸು</string>
     <string name="key_divide">ಭಾಗಿಸು</string>
+    <string name="key_open">ಆರಂಭದ ಆವರಣ</string>
+    <string name="key_close">ಮುಕ್ತಾಯದ ಆವರಣ</string>
     <string name="key_equals">ಲೆಕ್ಕ ಹಾಕಿ</string>
     <string name="category_required">ಒಂದು ವರ್ಗವನ್ನು ಆಯ್ಕೆಮಾಡಿ</string>
     <string name="account_required">ಒಂದು ಖಾತೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ</string>

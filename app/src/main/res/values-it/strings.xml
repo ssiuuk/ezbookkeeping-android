@@ -92,6 +92,8 @@
     <string name="key_minus">Meno</string>
     <string name="key_times">Per</string>
     <string name="key_divide">Diviso</string>
+    <string name="key_open">Parentesi aperta</string>
+    <string name="key_close">Parentesi chiusa</string>
     <string name="key_equals">Calcola</string>
     <string name="category_required">Scegli una categoria</string>
     <string name="account_required">Scegli un conto</string>

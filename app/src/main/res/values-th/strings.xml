@@ -92,6 +92,8 @@
     <string name="key_minus">ลบ</string>
     <string name="key_times">คูณ</string>
     <string name="key_divide">หาร</string>
+    <string name="key_open">วงเล็บเปิด</string>
+    <string name="key_close">วงเล็บปิด</string>
     <string name="key_equals">คำนวณ</string>
     <string name="category_required">เลือกหมวดหมู่</string>
     <string name="account_required">เลือกบัญชี</string>

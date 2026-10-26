@@ -92,6 +92,8 @@
     <string name="key_minus">Moins</string>
     <string name="key_times">Fois</string>
     <string name="key_divide">Divisé par</string>
+    <string name="key_open">Parenthèse ouvrante</string>
+    <string name="key_close">Parenthèse fermante</string>
     <string name="key_equals">Calculer</string>
     <string name="category_required">Choisissez une catégorie</string>
     <string name="account_required">Choisissez un compte</string>

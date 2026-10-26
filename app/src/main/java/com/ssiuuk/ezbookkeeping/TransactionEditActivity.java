@@ -365,6 +365,8 @@ public class TransactionEditActivity extends BaseActivity {
         findViewById(R.id.key_minus).setOnClickListener(view -> typeInAmount("−"));
         findViewById(R.id.key_times).setOnClickListener(view -> typeInAmount("×"));
         findViewById(R.id.key_divide).setOnClickListener(view -> typeInAmount("÷"));
+        findViewById(R.id.key_open).setOnClickListener(view -> typeInAmount("("));
+        findViewById(R.id.key_close).setOnClickListener(view -> typeInAmount(")"));
         findViewById(R.id.key_equals).setOnClickListener(view -> {
             TextInputEditText input = destinationAmountInput.hasFocus() ? destinationAmountInput : amountInput;
             workOutSum(input);
@@ -686,7 +688,7 @@ public class TransactionEditActivity extends BaseActivity {
     }
 
     /**
-     * Lets an amount field take a sum such as 12.50+3.20×2: its result shows under the field as it is typed, the + − × ÷ keys
+     * Lets an amount field take a sum such as 12.50+3.20×2: its result shows under the field as it is typed, the + − × ÷ ( ) keys
      * show while it is being typed in, and Done or leaving the field puts the result in its place.
      */
     private void setUpSums(TextInputLayout layout, TextInputEditText input) {

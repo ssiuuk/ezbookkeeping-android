@@ -92,6 +92,8 @@
     <string name="key_minus">Мінус</string>
     <string name="key_times">Помножити</string>
     <string name="key_divide">Поділити</string>
+    <string name="key_open">Відкривна дужка</string>
+    <string name="key_close">Закривна дужка</string>
     <string name="key_equals">Обчислити</string>
     <string name="category_required">Виберіть категорію</string>
     <string name="account_required">Виберіть рахунок</string>

@@ -92,6 +92,8 @@
     <string name="key_minus">கழித்தல்</string>
     <string name="key_times">பெருக்கல்</string>
     <string name="key_divide">வகுத்தல்</string>
+    <string name="key_open">தொடக்க அடைப்புக்குறி</string>
+    <string name="key_close">முடிவு அடைப்புக்குறி</string>
     <string name="key_equals">கணக்கிடு</string>
     <string name="category_required">ஒரு வகையைத் தேர்ந்தெடுக்கவும்</string>
     <string name="account_required">ஒரு கணக்கைத் தேர்ந்தெடுக்கவும்</string>

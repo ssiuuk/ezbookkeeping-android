@@ -102,6 +102,8 @@
     <string name="key_minus">Minus</string>
     <string name="key_times">Times</string>
     <string name="key_divide">Divided by</string>
+    <string name="key_open">Opening bracket</string>
+    <string name="key_close">Closing bracket</string>
     <string name="key_equals">Work out the sum</string>
     <string name="category_required">Choose a category</string>
     <string name="account_required">Choose an account</string>

@@ -20,6 +20,11 @@ public class AmountExpressionTest {
         assertEquals(Long.valueOf(123456), Formats.parseAmount("1,234.56"));
         assertEquals(Long.valueOf(123456), Formats.parseAmount("1.234,56"));
         assertEquals(Long.valueOf(-500), Formats.parseAmount("-5"));
+        // copied from formatted amounts, grouped with a no-break or narrow no-break space
+        assertEquals(Long.valueOf(123456), Formats.parseAmount("1\u00a0234,56"));
+        assertEquals(Long.valueOf(123456), Formats.parseAmount("1\u202f234,56"));
+        assertEquals(Long.valueOf(123456), Formats.parseAmount(" 1 234.56\t"));
+        assertEquals(Long.valueOf(223456), Formats.parseAmount("1\u00a0234,56 + 1\u202f000"));
         assertNull(Formats.parseAmount(""));
         assertNull(Formats.parseAmount("abc"));
         assertFalse(AmountExpression.isSum("12.50"));
