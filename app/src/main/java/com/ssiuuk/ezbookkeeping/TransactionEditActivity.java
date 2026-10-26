@@ -14,12 +14,14 @@ import android.text.InputFilter;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.text.method.DigitsKeyListener;
 import android.text.format.DateFormat;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -45,6 +47,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.android.material.timepicker.MaterialTimePicker;
 import com.google.android.material.timepicker.TimeFormat;
+import com.ssiuuk.ezbookkeeping.data.AmountExpression;
 import com.ssiuuk.ezbookkeeping.data.Api;
 import com.ssiuuk.ezbookkeeping.data.ApiException;
 import com.ssiuuk.ezbookkeeping.data.Formats;
@@ -164,6 +167,9 @@ public class TransactionEditActivity extends BaseActivity {
     private TextInputEditText destinationAccountInput;
     private TextInputLayout destinationAmountLayout;
     private TextInputEditText destinationAmountInput;
+    private LinearLayout amountKeys;
+    /** What the amount field says under it when it isn't showing a sum's result, such as the card a payment was made with. */
+    private CharSequence amountHelper;
     private TextInputEditText dateInput;
     private TextInputEditText timeInput;
     private TextInputLayout projectLayout;
@@ -290,6 +296,7 @@ public class TransactionEditActivity extends BaseActivity {
         destinationAccountInput = findViewById(R.id.destination_account);
         destinationAmountLayout = findViewById(R.id.destination_amount_layout);
         destinationAmountInput = findViewById(R.id.destination_amount);
+        amountKeys = findViewById(R.id.amount_keys);
         dateInput = findViewById(R.id.date);
         timeInput = findViewById(R.id.time);
         projectLayout = findViewById(R.id.project_layout);
@@ -352,19 +359,15 @@ public class TransactionEditActivity extends BaseActivity {
             .build()));
         saveButton.setOnClickListener(view -> save());
 
-        amountInput.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                amountLayout.setError(null);
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-            }
+        setUpSums(amountLayout, amountInput);
+        setUpSums(destinationAmountLayout, destinationAmountInput);
+        findViewById(R.id.key_plus).setOnClickListener(view -> typeInAmount("+"));
+        findViewById(R.id.key_minus).setOnClickListener(view -> typeInAmount("−"));
+        findViewById(R.id.key_times).setOnClickListener(view -> typeInAmount("×"));
+        findViewById(R.id.key_divide).setOnClickListener(view -> typeInAmount("÷"));
+        findViewById(R.id.key_equals).setOnClickListener(view -> {
+            TextInputEditText input = destinationAmountInput.hasFocus() ? destinationAmountInput : amountInput;
+            workOutSum(input);
         });
 
         if (pending != null) {
@@ -682,6 +685,98 @@ public class TransactionEditActivity extends BaseActivity {
         }
     }
 
+    /**
+     * Lets an amount field take a sum such as 12.50+3.20×2: its result shows under the field as it is typed, the + − × ÷ keys
+     * show while it is being typed in, and Done or leaving the field puts the result in its place.
+     */
+    private void setUpSums(TextInputLayout layout, TextInputEditText input) {
+        input.setKeyListener(DigitsKeyListener.getInstance("0123456789.,+-*/×÷−()"));
+        // keeps the number keyboard, with its minus key
+        input.setRawInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL | InputType.TYPE_NUMBER_FLAG_SIGNED);
+
+        input.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                layout.setError(null);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                showSumResult(layout, s.toString());
+            }
+        });
+
+        input.setOnFocusChangeListener((view, hasFocus) -> {
+            if (hasFocus) {
+                // the keys go under whichever amount field is being typed in
+                ViewGroup form = (ViewGroup) amountKeys.getParent();
+                form.removeView(amountKeys);
+                form.addView(amountKeys, form.indexOfChild(layout) + 1);
+                amountKeys.setVisibility(View.VISIBLE);
+            } else {
+                workOutSum(input);
+
+                if (!amountInput.hasFocus() && !destinationAmountInput.hasFocus()) {
+                    amountKeys.setVisibility(View.GONE);
+                }
+            }
+        });
+
+        input.setOnEditorActionListener((view, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                workOutSum(input);
+            }
+
+            // the keyboard still closes
+            return false;
+        });
+    }
+
+    private void showSumResult(TextInputLayout layout, String text) {
+        CharSequence plain = layout == amountLayout ? amountHelper : null;
+        Long cents = AmountExpression.isSum(text) ? Formats.parseAmount(text) : null;
+        layout.setHelperText(cents == null ? plain : "= " + Formats.editableAmount(cents));
+    }
+
+    /** Puts a sum's result in place of the sum; an unfinished sum is left to finish (or to be shown as wrong on save). */
+    private void workOutSum(TextInputEditText input) {
+        String text = input.getText() == null ? "" : input.getText().toString();
+
+        if (!AmountExpression.isSum(text)) {
+            return;
+        }
+
+        Long cents = Formats.parseAmount(text);
+
+        if (cents != null) {
+            input.setText(Formats.editableAmount(cents));
+            input.setSelection(input.length());
+        }
+    }
+
+    private void typeInAmount(String key) {
+        TextInputEditText input = destinationAmountInput.hasFocus() ? destinationAmountInput : amountInput;
+        Editable text = input.getText();
+
+        if (text == null) {
+            return;
+        }
+
+        int start = Math.max(0, Math.min(input.getSelectionStart(), input.getSelectionEnd()));
+        int end = Math.max(0, Math.max(input.getSelectionStart(), input.getSelectionEnd()));
+        text.replace(start, end, key);
+    }
+
+    /** Says the sum can't be worked out (such as 12+ or ÷0) rather than asking for an amount the field already has. */
+    private static int amountError(TextInputEditText input) {
+        String text = input.getText() == null ? "" : input.getText().toString();
+        return AmountExpression.isSum(text) && Formats.parseAmount(text) == null ? R.string.sum_not_valid : R.string.amount_required;
+    }
+
     private void fillFromPending() {
         type = pending.refund ? Models.TRANSACTION_INCOME : Models.TRANSACTION_EXPENSE;
         typeGroup.check(pending.refund ? R.id.type_income : R.id.type_expense);
@@ -689,7 +784,8 @@ public class TransactionEditActivity extends BaseActivity {
         time.setTimeInMillis(pending.time);
         merchant = pending.merchant;
         String paid = pending.card.isEmpty() ? getString(R.string.google_wallet) : pending.card;
-        amountLayout.setHelperText(pending.currency.isEmpty() ? paid : getString(R.string.paid_in_currency, paid, Formats.amount(pending.amount, pending.currency)));
+        amountHelper = pending.currency.isEmpty() ? paid : getString(R.string.paid_in_currency, paid, Formats.amount(pending.amount, pending.currency));
+        amountLayout.setHelperText(amountHelper);
     }
 
     /** The category used last time at this shop, and the account this card belongs to or else the one used at this shop. */
@@ -1804,7 +1900,7 @@ public class TransactionEditActivity extends BaseActivity {
         boolean valid = true;
 
         if (amount == null || amount < 0) {
-            amountLayout.setError(getString(R.string.amount_required));
+            amountLayout.setError(getString(amountError(amountInput)));
             valid = false;
         }
 
@@ -1833,7 +1929,7 @@ public class TransactionEditActivity extends BaseActivity {
                 destinationAmount = Formats.parseAmount(destinationAmountInput.getText() == null ? "" : destinationAmountInput.getText().toString());
 
                 if (destinationAmount == null || destinationAmount < 0) {
-                    destinationAmountLayout.setError(getString(R.string.amount_required));
+                    destinationAmountLayout.setError(getString(amountError(destinationAmountInput)));
                     valid = false;
                 }
             }

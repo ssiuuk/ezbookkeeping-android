@@ -87,6 +87,12 @@
     <string name="choose_account">Alege un cont</string>
     <string name="choose_tags">Alege etichete</string>
     <string name="amount_required">Introdu o sumă</string>
+    <string name="sum_not_valid">Acest calcul nu poate fi efectuat</string>
+    <string name="key_plus">Plus</string>
+    <string name="key_minus">Minus</string>
+    <string name="key_times">Ori</string>
+    <string name="key_divide">Împărțit la</string>
+    <string name="key_equals">Calculează</string>
     <string name="category_required">Alege o categorie</string>
     <string name="account_required">Alege un cont</string>
     <string name="destination_account_required">Alege contul în care transferi</string>

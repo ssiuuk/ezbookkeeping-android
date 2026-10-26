@@ -87,6 +87,12 @@
     <string name="choose_account">選擇帳戶</string>
     <string name="choose_tags">選擇標籤</string>
     <string name="amount_required">請輸入金額</string>
+    <string name="sum_not_valid">無法計算此算式</string>
+    <string name="key_plus">加</string>
+    <string name="key_minus">減</string>
+    <string name="key_times">乘</string>
+    <string name="key_divide">除以</string>
+    <string name="key_equals">計算</string>
     <string name="category_required">請選擇分類</string>
     <string name="account_required">請選擇帳戶</string>
     <string name="destination_account_required">請選擇轉入帳戶</string>

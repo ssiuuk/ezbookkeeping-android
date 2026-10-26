@@ -87,6 +87,12 @@
     <string name="choose_account">Hesap seçin</string>
     <string name="choose_tags">Etiket seçin</string>
     <string name="amount_required">Bir tutar girin</string>
+    <string name="sum_not_valid">Bu işlem hesaplanamıyor</string>
+    <string name="key_plus">Artı</string>
+    <string name="key_minus">Eksi</string>
+    <string name="key_times">Çarpı</string>
+    <string name="key_divide">Bölü</string>
+    <string name="key_equals">Hesapla</string>
     <string name="category_required">Bir kategori seçin</string>
     <string name="account_required">Bir hesap seçin</string>
     <string name="destination_account_required">Transfer yapılacak hesabı seçin</string>

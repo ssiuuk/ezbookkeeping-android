@@ -87,6 +87,12 @@
     <string name="choose_account">Scegli un conto</string>
     <string name="choose_tags">Scegli i tag</string>
     <string name="amount_required">Inserisci un importo</string>
+    <string name="sum_not_valid">Impossibile calcolare questa operazione</string>
+    <string name="key_plus">Più</string>
+    <string name="key_minus">Meno</string>
+    <string name="key_times">Per</string>
+    <string name="key_divide">Diviso</string>
+    <string name="key_equals">Calcola</string>
     <string name="category_required">Scegli una categoria</string>
     <string name="account_required">Scegli un conto</string>
     <string name="destination_account_required">Scegli il conto su cui trasferire</string>

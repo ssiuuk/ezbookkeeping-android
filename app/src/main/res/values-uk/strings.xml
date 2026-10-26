@@ -87,6 +87,12 @@
     <string name="choose_account">Виберіть рахунок</string>
     <string name="choose_tags">Виберіть теги</string>
     <string name="amount_required">Введіть суму</string>
+    <string name="sum_not_valid">Не вдається обчислити цей вираз</string>
+    <string name="key_plus">Плюс</string>
+    <string name="key_minus">Мінус</string>
+    <string name="key_times">Помножити</string>
+    <string name="key_divide">Поділити</string>
+    <string name="key_equals">Обчислити</string>
     <string name="category_required">Виберіть категорію</string>
     <string name="account_required">Виберіть рахунок</string>
     <string name="destination_account_required">Виберіть рахунок для переказу</string>

@@ -87,6 +87,12 @@
     <string name="choose_account">Konto wählen</string>
     <string name="choose_tags">Tags wählen</string>
     <string name="amount_required">Gib einen Betrag ein</string>
+    <string name="sum_not_valid">Diese Rechnung lässt sich nicht ausrechnen</string>
+    <string name="key_plus">Plus</string>
+    <string name="key_minus">Minus</string>
+    <string name="key_times">Mal</string>
+    <string name="key_divide">Geteilt durch</string>
+    <string name="key_equals">Ausrechnen</string>
     <string name="category_required">Wähle eine Kategorie</string>
     <string name="account_required">Wähle ein Konto</string>
     <string name="destination_account_required">Wähle das Zielkonto der Überweisung</string>

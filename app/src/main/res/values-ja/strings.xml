@@ -87,6 +87,12 @@
     <string name="choose_account">口座を選択</string>
     <string name="choose_tags">タグを選択</string>
     <string name="amount_required">金額を入力してください</string>
+    <string name="sum_not_valid">この計算はできません</string>
+    <string name="key_plus">たす</string>
+    <string name="key_minus">ひく</string>
+    <string name="key_times">かける</string>
+    <string name="key_divide">わる</string>
+    <string name="key_equals">計算する</string>
     <string name="category_required">カテゴリを選択してください</string>
     <string name="account_required">口座を選択してください</string>
     <string name="destination_account_required">振替先の口座を選択してください</string>

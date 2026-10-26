@@ -87,6 +87,12 @@
     <string name="choose_account">கணக்கைத் தேர்ந்தெடு</string>
     <string name="choose_tags">குறிச்சொற்களைத் தேர்ந்தெடு</string>
     <string name="amount_required">தொகையை உள்ளிடவும்</string>
+    <string name="sum_not_valid">இந்தக் கணக்கைச் செய்ய முடியாது</string>
+    <string name="key_plus">கூட்டல்</string>
+    <string name="key_minus">கழித்தல்</string>
+    <string name="key_times">பெருக்கல்</string>
+    <string name="key_divide">வகுத்தல்</string>
+    <string name="key_equals">கணக்கிடு</string>
     <string name="category_required">ஒரு வகையைத் தேர்ந்தெடுக்கவும்</string>
     <string name="account_required">ஒரு கணக்கைத் தேர்ந்தெடுக்கவும்</string>
     <string name="destination_account_required">பணம் மாற்ற வேண்டிய கணக்கைத் தேர்ந்தெடுக்கவும்</string>

@@ -87,6 +87,12 @@
     <string name="choose_account">Izberite račun</string>
     <string name="choose_tags">Izberite oznake</string>
     <string name="amount_required">Vnesite znesek</string>
+    <string name="sum_not_valid">Tega računa ni mogoče izračunati</string>
+    <string name="key_plus">Plus</string>
+    <string name="key_minus">Minus</string>
+    <string name="key_times">Krat</string>
+    <string name="key_divide">Deljeno z</string>
+    <string name="key_equals">Izračunaj</string>
     <string name="category_required">Izberite kategorijo</string>
     <string name="account_required">Izberite račun</string>
     <string name="destination_account_required">Izberite račun, na katerega nakazujete</string>

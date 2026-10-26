@@ -87,6 +87,12 @@
     <string name="choose_account">ಖಾತೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ</string>
     <string name="choose_tags">ಟ್ಯಾಗ್‌ಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ</string>
     <string name="amount_required">ಮೊತ್ತವನ್ನು ನಮೂದಿಸಿ</string>
+    <string name="sum_not_valid">ಈ ಲೆಕ್ಕವನ್ನು ಮಾಡಲಾಗುವುದಿಲ್ಲ</string>
+    <string name="key_plus">ಕೂಡಿಸು</string>
+    <string name="key_minus">ಕಳೆ</string>
+    <string name="key_times">ಗುಣಿಸು</string>
+    <string name="key_divide">ಭಾಗಿಸು</string>
+    <string name="key_equals">ಲೆಕ್ಕ ಹಾಕಿ</string>
     <string name="category_required">ಒಂದು ವರ್ಗವನ್ನು ಆಯ್ಕೆಮಾಡಿ</string>
     <string name="account_required">ಒಂದು ಖಾತೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ</string>
     <string name="destination_account_required">ವರ್ಗಾಯಿಸಬೇಕಾದ ಖಾತೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ</string>
