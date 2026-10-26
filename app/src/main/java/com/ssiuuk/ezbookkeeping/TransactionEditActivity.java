@@ -301,6 +301,8 @@ public class TransactionEditActivity extends BaseActivity {
         destinationAmountLayout = findViewById(R.id.destination_amount_layout);
         destinationAmountInput = findViewById(R.id.destination_amount);
         amountKeypad = findViewById(R.id.amount_keypad);
+        // the pad's bottom row clear of the navigation bar, its background behind it
+        padForSystemBars(amountKeypad, false, true);
         dateInput = findViewById(R.id.date);
         timeInput = findViewById(R.id.time);
         projectLayout = findViewById(R.id.project_layout);
