@@ -97,6 +97,14 @@
     <string name="choose_account">Choose an account</string>
     <string name="choose_tags">Choose tags</string>
     <string name="amount_required">Enter an amount</string>
+    <string name="sum_not_valid">This sum can\'t be worked out</string>
+    <string name="key_plus">Plus</string>
+    <string name="key_minus">Minus</string>
+    <string name="key_times">Times</string>
+    <string name="key_divide">Divided by</string>
+    <string name="key_open">Opening bracket</string>
+    <string name="key_close">Closing bracket</string>
+    <string name="key_equals">Work out the sum</string>
     <string name="category_required">Choose a category</string>
     <string name="account_required">Choose an account</string>
     <string name="destination_account_required">Choose the account to transfer to</string>

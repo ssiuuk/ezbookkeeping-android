@@ -87,6 +87,14 @@
     <string name="choose_account">Chọn tài khoản</string>
     <string name="choose_tags">Chọn thẻ</string>
     <string name="amount_required">Nhập số tiền</string>
+    <string name="sum_not_valid">Không thể tính phép tính này</string>
+    <string name="key_plus">Cộng</string>
+    <string name="key_minus">Trừ</string>
+    <string name="key_times">Nhân</string>
+    <string name="key_divide">Chia</string>
+    <string name="key_open">Mở ngoặc</string>
+    <string name="key_close">Đóng ngoặc</string>
+    <string name="key_equals">Tính</string>
     <string name="category_required">Chọn một danh mục</string>
     <string name="account_required">Chọn một tài khoản</string>
     <string name="destination_account_required">Chọn tài khoản nhận chuyển khoản</string>

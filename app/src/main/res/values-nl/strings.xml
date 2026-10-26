@@ -87,6 +87,14 @@
     <string name="choose_account">Kies een rekening</string>
     <string name="choose_tags">Kies tags</string>
     <string name="amount_required">Voer een bedrag in</string>
+    <string name="sum_not_valid">Deze som kan niet worden uitgerekend</string>
+    <string name="key_plus">Plus</string>
+    <string name="key_minus">Min</string>
+    <string name="key_times">Keer</string>
+    <string name="key_divide">Gedeeld door</string>
+    <string name="key_open">Haakje openen</string>
+    <string name="key_close">Haakje sluiten</string>
+    <string name="key_equals">Uitrekenen</string>
     <string name="category_required">Kies een categorie</string>
     <string name="account_required">Kies een rekening</string>
     <string name="destination_account_required">Kies de rekening om naar over te maken</string>

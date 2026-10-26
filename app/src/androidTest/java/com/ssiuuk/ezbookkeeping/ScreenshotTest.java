@@ -102,7 +102,13 @@ public class ScreenshotTest {
             settle();
             shot("07-add-transaction");
 
-            type(By.res(packageName, "amount"), "12.50");
+            // a sum: the keys add to it, its result shows under the field, and = puts it in place
+            type(By.res(packageName, "amount"), "(10+2,5");
+            tap(By.res(packageName, "key_close"));
+            find(By.res(packageName, "amount").text("(10+2,5)"));
+            find(By.text("= 12.50"));
+            tap(By.res(packageName, "key_equals"));
+            find(By.res(packageName, "amount").text("12.50"));
             hideKeyboard();
             tap(By.res(packageName, "category"));
             find(By.text("Restaurants"));

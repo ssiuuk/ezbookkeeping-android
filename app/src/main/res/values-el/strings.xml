@@ -87,6 +87,14 @@
     <string name="choose_account">Επιλέξτε λογαριασμό</string>
     <string name="choose_tags">Επιλέξτε ετικέτες</string>
     <string name="amount_required">Εισαγάγετε ποσό</string>
+    <string name="sum_not_valid">Αυτός ο υπολογισμός δεν μπορεί να γίνει</string>
+    <string name="key_plus">Συν</string>
+    <string name="key_minus">Μείον</string>
+    <string name="key_times">Επί</string>
+    <string name="key_divide">Διά</string>
+    <string name="key_open">Άνοιγμα παρένθεσης</string>
+    <string name="key_close">Κλείσιμο παρένθεσης</string>
+    <string name="key_equals">Υπολογισμός</string>
     <string name="category_required">Επιλέξτε κατηγορία</string>
     <string name="account_required">Επιλέξτε λογαριασμό</string>
     <string name="destination_account_required">Επιλέξτε τον λογαριασμό προορισμού της μεταφοράς</string>

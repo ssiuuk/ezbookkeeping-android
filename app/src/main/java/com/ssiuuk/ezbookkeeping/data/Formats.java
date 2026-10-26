@@ -42,29 +42,12 @@ public final class Formats {
 
     /** Parses what the user typed in an amount field into cents, or returns null. */
     public static Long parseAmount(String text) {
-        if (text == null) {
-            return null;
-        }
-
-        String cleaned = text.trim().replace(" ", "").replace(" ", "");
-
-        if (cleaned.isEmpty()) {
-            return null;
-        }
-
-        int lastComma = cleaned.lastIndexOf(',');
-        int lastDot = cleaned.lastIndexOf('.');
-
-        if (lastComma > lastDot) {
-            // "1.234,56" or "12,5": the comma is the decimal separator
-            cleaned = cleaned.replace(".", "").replace(',', '.');
-        } else {
-            cleaned = cleaned.replace(",", "");
-        }
+        // also a sum such as "12.50+3.20×2"
+        BigDecimal value = AmountExpression.evaluate(text);
 
         try {
-            return new BigDecimal(cleaned).movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
-        } catch (NumberFormatException | ArithmeticException ex) {
+            return value == null ? null : AmountExpression.toCents(value);
+        } catch (ArithmeticException ex) {
             return null;
         }
     }

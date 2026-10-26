@@ -87,6 +87,14 @@
     <string name="choose_account">Choisir un compte</string>
     <string name="choose_tags">Choisir des étiquettes</string>
     <string name="amount_required">Saisissez un montant</string>
+    <string name="sum_not_valid">Ce calcul est impossible</string>
+    <string name="key_plus">Plus</string>
+    <string name="key_minus">Moins</string>
+    <string name="key_times">Fois</string>
+    <string name="key_divide">Divisé par</string>
+    <string name="key_open">Parenthèse ouvrante</string>
+    <string name="key_close">Parenthèse fermante</string>
+    <string name="key_equals">Calculer</string>
     <string name="category_required">Choisissez une catégorie</string>
     <string name="account_required">Choisissez un compte</string>
     <string name="destination_account_required">Choisissez le compte de destination du virement</string>

@@ -87,6 +87,14 @@
     <string name="choose_account">Escolha uma conta</string>
     <string name="choose_tags">Escolha as tags</string>
     <string name="amount_required">Digite um valor</string>
+    <string name="sum_not_valid">Não é possível calcular esta conta</string>
+    <string name="key_plus">Mais</string>
+    <string name="key_minus">Menos</string>
+    <string name="key_times">Vezes</string>
+    <string name="key_divide">Dividido por</string>
+    <string name="key_open">Abrir parêntese</string>
+    <string name="key_close">Fechar parêntese</string>
+    <string name="key_equals">Calcular</string>
     <string name="category_required">Escolha uma categoria</string>
     <string name="account_required">Escolha uma conta</string>
     <string name="destination_account_required">Escolha a conta de destino da transferência</string>
