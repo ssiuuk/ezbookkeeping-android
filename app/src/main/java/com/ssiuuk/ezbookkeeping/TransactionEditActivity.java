@@ -70,10 +70,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -682,7 +682,7 @@ public class TransactionEditActivity extends BaseActivity {
      */
     private void setUpSums(TextInputLayout layout, TextInputEditText input) {
         // a hardware keyboard can still type sums; the phone's own keyboard stays closed
-        input.setKeyListener(DigitsKeyListener.getInstance("0123456789.,+-*/×÷−()"));
+        input.setKeyListener(DigitsKeyListener.getInstance("0123456789.,\u066b\u066c+-*/×÷−()"));
         input.setShowSoftInputOnFocus(false);
         // not a text field to the phone's keyboard either, which could otherwise open over the pad as the screen opens
         input.setRawInputType(InputType.TYPE_NULL);
@@ -736,8 +736,7 @@ public class TransactionEditActivity extends BaseActivity {
             findViewById(digitKeys[i]).setOnClickListener(view -> typeInAmount(digit));
         }
 
-        // the separator people expect, which the amount reading takes either way
-        String point = String.valueOf(DecimalFormatSymbols.getInstance().getDecimalSeparator());
+        String point = AmountExpression.decimalKey(Locale.getDefault());
         MaterialButton pointKey = findViewById(R.id.key_point);
         pointKey.setText(point);
         pointKey.setOnClickListener(view -> typeInAmount(point));
