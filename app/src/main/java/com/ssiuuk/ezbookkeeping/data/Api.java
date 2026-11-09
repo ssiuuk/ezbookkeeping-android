@@ -253,10 +253,11 @@ public final class Api {
             HttpURLConnection connection = null;
 
             try {
-                StringBuilder full = new StringBuilder(url).append(url.contains("?") ? '&' : '?').append("token=").append(encode(server.token == null ? "" : server.token));
+                String link = withoutQueryParameter(url, "token");
+                StringBuilder full = new StringBuilder(link).append(link.contains("?") ? '&' : '?').append("token=").append(encode(server.token == null ? "" : server.token));
                 String bookId = currentBookId();
 
-                if (bookId != null) {
+                if (bookId != null && !link.matches(".*[?&]book_id=.*")) {
                     full.append("&book_id=").append(encode(bookId));
                 }
 
@@ -503,6 +504,30 @@ public final class Api {
 
             return output.toString("UTF-8");
         }
+    }
+
+    /**
+     * Removes a parameter from a link. Newer servers put a short-lived token in picture links, which stops working
+     * when the link is read from the offline copy, so downloads use the sign-in token instead.
+     */
+    static String withoutQueryParameter(String url, String name) {
+        int queryStart = url.indexOf('?');
+
+        if (queryStart < 0) {
+            return url;
+        }
+
+        StringBuilder kept = new StringBuilder();
+
+        for (String parameter : url.substring(queryStart + 1).split("&")) {
+            if (parameter.isEmpty() || parameter.equals(name) || parameter.startsWith(name + "=")) {
+                continue;
+            }
+
+            kept.append(kept.length() == 0 ? '?' : '&').append(parameter);
+        }
+
+        return url.substring(0, queryStart) + kept;
     }
 
     private static String encode(String value) {
